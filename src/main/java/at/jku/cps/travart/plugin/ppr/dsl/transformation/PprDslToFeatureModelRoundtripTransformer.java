@@ -1,6 +1,5 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
-import at.jku.cps.travart.core.common.IModelTransformer;
 import at.jku.cps.travart.core.common.Prop4JUtils;
 import at.jku.cps.travart.core.common.TraVarTUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
@@ -10,59 +9,38 @@ import at.sqi.ppr.model.product.Product;
 import de.ovgu.featureide.fm.core.ExtensionManager.NoSuchExtensionException;
 import de.ovgu.featureide.fm.core.base.FeatureUtils;
 import de.ovgu.featureide.fm.core.base.IConstraint;
-import de.ovgu.featureide.fm.core.base.IFeature;
-import de.ovgu.featureide.fm.core.base.IFeatureModel;
-import de.ovgu.featureide.fm.core.base.IFeatureModelFactory;
-import de.ovgu.featureide.fm.core.base.impl.DefaultFeatureModelFactory;
-import de.ovgu.featureide.fm.core.base.impl.FMFactoryManager;
-import de.ovgu.featureide.fm.core.init.FMCoreLibrary;
-import de.ovgu.featureide.fm.core.init.LibraryManager;
+import de.vill.model.Attribute;
+import de.vill.model.Feature;
+import de.vill.model.FeatureModel;
 
 import java.util.List;
 
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DEFAULT_VALUE_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DESCRIPTION_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_ID_KEY_PRAEFIX;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_ID_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_TYPE_KEY_PRAEFIX;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_TYPE_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_UNIT_KEY_PRAEFIX;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_UNIT_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_VALUE_KEY_PRAEFIX;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_VALUE_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.CHILDREN_PRODUCTS_LIST_NAME_NR_;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.CHILDREN_PRODUCTS_LIST_NAME_NR_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.CHILDREN_PRODUCTS_LIST_SIZE;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.CHILDREN_PRODUCTS_LIST_SIZE_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.IMPLEMENTED_PRODUCTS_LIST_NAME_NR_;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.IMPLEMENTED_PRODUCTS_LIST_NAME_NR_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.IMPLEMENTED_PRODUCTS_LIST_SIZE;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.IMPLEMENTED_PRODUCTS_LIST_SIZE_TYPE;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.NAME_ATTRIBUTE_KEY;
-import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.NAME_ATTRIBUTE_TYPE;
 
-public class PprDslToFeatureModelRoundtripTransformer implements IModelTransformer<AssemblySequence, IFeatureModel> {
+public class PprDslToFeatureModelRoundtripTransformer {
 
-    static {
-        LibraryManager.registerLibrary(FMCoreLibrary.getInstance());
-    }
+    //    private IFeatureModelFactory factory;
+    private FeatureModel model;
 
-    private IFeatureModelFactory factory;
-    private IFeatureModel fm;
-
-    @Override
-    public IFeatureModel transform(final AssemblySequence asq, final String modelName)
+    public FeatureModel transform(final AssemblySequence asq, final String modelName)
             throws NotSupportedVariabilityTypeException {
         try {
-            this.factory = FMFactoryManager.getInstance().getFactory(DefaultFeatureModelFactory.ID);
-            this.fm = this.factory.create();
+            this.model = new FeatureModel();
             this.transformProducts(asq);
             this.deriveFeatureTree(asq);
             this.transformConstraints(asq);
-            TraVarTUtils.deriveFeatureModelRoot(this.factory, this.fm, modelName, true);
-            return this.fm;
+            TraVarTUtils.deriveFeatureModelRoot(this.model, modelName, true);
+            return this.model;
         } catch (final NoSuchExtensionException e) {
             throw new NotSupportedVariabilityTypeException(e);
         }
@@ -70,34 +48,39 @@ public class PprDslToFeatureModelRoundtripTransformer implements IModelTransform
 
     private void transformProducts(final AssemblySequence asq) {
         for (final Product product : asq.getProducts().values()) {
-            final IFeature feature = this.factory.createFeature(this.fm, product.getId());
-            FeatureUtils.setAbstract(feature, product.isAbstract());
+            final Feature feature = new Feature(product.getId());
+            if (product.isAbstract()) {
+                feature.getAttributes().put(
+                        "abstract",
+                        new Attribute("abstract", true)
+                );
+            }
             this.storeNameAttributeAsProperty(feature, product.getName());
             this.storeChildrenAttributeAsProperty(feature, product.getChildren());
             for (final NamedObject attribute : product.getAttributes().values()) {
                 this.storeCustomAttributesAsProperty(feature, attribute);
             }
-            FeatureUtils.addFeature(this.fm, feature);
+            FeatureUtils.addFeature(this.model, feature);
         }
     }
 
     private void deriveFeatureTree(final AssemblySequence asq) {
         for (final Product product : asq.getProducts().values()) {
-            final IFeature feature = this.fm.getFeature(product.getId());
+            final Feature feature = this.model.getFeatureMap().get(product.getId());
             if (!product.getImplementedProducts().isEmpty() && product.getImplementedProducts().size() == 1) {
                 final Product parentProduct = product.getImplementedProducts().get(0);
-                final IFeature parentFeature = this.fm.getFeature(parentProduct.getId());
+                final Feature parentFeature = this.model.getFeatureMap().get(parentProduct.getId());
                 FeatureUtils.addChild(parentFeature, feature);
             } else {
                 // no tree can be derived, but constraints for each of the implemented products
                 // (Product requires implemented products)
                 for (final Product implemented : product.getImplementedProducts()) {
-                    final IFeature impFeature = this.fm.getFeature(implemented.getId());
+                    final Feature impFeature = this.model.getFeatureMap().get(implemented.getId());
                     assert impFeature != null;
                     if (!TraVarTUtils.isParentFeatureOf(feature, impFeature)) {
-                        final IConstraint constraint = this.factory.createConstraint(this.fm, Prop4JUtils.createImplies(
+                        final IConstraint constraint = this.factory.createConstraint(this.model, Prop4JUtils.createImplies(
                                 Prop4JUtils.createLiteral(feature), Prop4JUtils.createLiteral(impFeature)));
-                        FeatureUtils.addConstraint(this.fm, constraint);
+                        FeatureUtils.addConstraint(this.model, constraint);
                     }
                 }
             }
@@ -109,70 +92,93 @@ public class PprDslToFeatureModelRoundtripTransformer implements IModelTransform
 
     private void transformConstraints(final AssemblySequence asq) {
         for (final Product product : asq.getProducts().values()) {
-            final IFeature child = this.fm.getFeature(product.getId());
+            final Feature child = this.model.getFeatureMap().get(product.getId());
             assert child != null;
             // requires constraints
             for (final Product required : product.getRequires()) {
-                final IFeature parent = this.fm.getFeature(required.getId());
+                final Feature parent = this.model.getFeatureMap().get(required.getId());
                 assert parent != null;
                 if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                    final IConstraint constraint = this.factory.createConstraint(this.fm, Prop4JUtils
+                    final IConstraint constraint = this.factory.createConstraint(this.model, Prop4JUtils
                             .createImplies(Prop4JUtils.createLiteral(child), Prop4JUtils.createLiteral(parent)));
-                    FeatureUtils.addConstraint(this.fm, constraint);
+                    FeatureUtils.addConstraint(this.model, constraint);
                 }
             }
             // excludes constraints
             for (final Product excluded : product.getExcludes()) {
-                final IFeature parent = this.fm.getFeature(excluded.getId());
+                final Feature parent = this.model.getFeatureMap().get(excluded.getId());
                 assert parent != null;
                 if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                    final IConstraint constraint = this.factory.createConstraint(this.fm,
+                    final IConstraint constraint = this.factory.createConstraint(this.model,
                             Prop4JUtils.createImplies(Prop4JUtils.createLiteral(child),
                                     Prop4JUtils.createNot(Prop4JUtils.createLiteral(parent))));
-                    FeatureUtils.addConstraint(this.fm, constraint);
+                    FeatureUtils.addConstraint(this.model, constraint);
                 }
             }
         }
     }
 
-    private void storeNameAttributeAsProperty(final IFeature feature, final String name) {
-        feature.getCustomProperties().set(NAME_ATTRIBUTE_KEY, NAME_ATTRIBUTE_TYPE, name);
+    private void storeNameAttributeAsProperty(final Feature feature, final String name) {
+        feature.getAttributes().put(
+                NAME_ATTRIBUTE_KEY,
+                new Attribute(NAME_ATTRIBUTE_KEY, name)
+        );
     }
 
-    private void storeCustomAttributesAsProperty(final IFeature feature, final NamedObject attribute) {
-        feature.getCustomProperties().set(ATTRIBUTE_ID_KEY_PRAEFIX + attribute.getName(), ATTRIBUTE_ID_TYPE,
-                attribute.getName());
-        feature.getCustomProperties().set(ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attribute.getName(),
-                ATTRIBUTE_DESCRIPTION_TYPE, attribute.getDescription());
-        feature.getCustomProperties().set(ATTRIBUTE_UNIT_KEY_PRAEFIX + attribute.getName(), ATTRIBUTE_UNIT_TYPE,
-                attribute.getUnit());
-        feature.getCustomProperties().set(ATTRIBUTE_TYPE_KEY_PRAEFIX + attribute.getName(), ATTRIBUTE_TYPE_TYPE,
-                attribute.getType());
-        feature.getCustomProperties().set(ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attribute.getName(),
-                ATTRIBUTE_DEFAULT_VALUE_TYPE, attribute.getDefaultValueObject().toString());
-        feature.getCustomProperties().set(ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName(), ATTRIBUTE_VALUE_TYPE,
-                attribute.getValueObject().toString());
+    private void storeCustomAttributesAsProperty(final Feature feature, final NamedObject attribute) {
+        feature.getAttributes().put(
+                ATTRIBUTE_ID_KEY_PRAEFIX + attribute.getName(),
+                new Attribute(ATTRIBUTE_ID_KEY_PRAEFIX + attribute.getName(), attribute.getName())
+        );
+        feature.getAttributes().put(
+                ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attribute.getName(),
+                new Attribute(ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attribute.getName(), attribute.getDescription())
+        );
+        feature.getAttributes().put(
+                ATTRIBUTE_UNIT_KEY_PRAEFIX + attribute.getName(),
+                new Attribute(ATTRIBUTE_UNIT_KEY_PRAEFIX + attribute.getName(), attribute.getUnit())
+        );
+        feature.getAttributes().put(
+                ATTRIBUTE_TYPE_KEY_PRAEFIX + attribute.getName(),
+                new Attribute(ATTRIBUTE_TYPE_KEY_PRAEFIX + attribute.getName(), attribute.getType())
+        );
+        feature.getAttributes().put(
+                ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attribute.getName(),
+                new Attribute(ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attribute.getName(), attribute.getDefaultValueObject())
+        );
+        feature.getAttributes().put(
+                ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName(),
+                new Attribute(ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName(), attribute.getValueObject())
+        );
     }
 
-    private void storeImplementedProductsAsProperties(final IFeature feature, final List<Product> implementedProducts) {
+    private void storeImplementedProductsAsProperties(final Feature feature, final List<Product> implementedProducts) {
         // store the size of implemented products
-        feature.getCustomProperties().set(IMPLEMENTED_PRODUCTS_LIST_SIZE, IMPLEMENTED_PRODUCTS_LIST_SIZE_TYPE,
-                Integer.toString(implementedProducts.size()));
+        feature.getAttributes().put(
+                IMPLEMENTED_PRODUCTS_LIST_SIZE,
+                new Attribute(IMPLEMENTED_PRODUCTS_LIST_SIZE, implementedProducts.size())
+        );
         // store the names of the implemented products
         for (int i = 0; i < implementedProducts.size(); i++) {
-            feature.getCustomProperties().set(IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i,
-                    IMPLEMENTED_PRODUCTS_LIST_NAME_NR_TYPE, implementedProducts.get(i).getId());
+            feature.getAttributes().put(
+                    IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i,
+                    new Attribute(IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i, implementedProducts.get(i).getId())
+            );
         }
     }
 
-    private void storeChildrenAttributeAsProperty(final IFeature feature, final List<Product> childProducts) {
+    private void storeChildrenAttributeAsProperty(final Feature feature, final List<Product> childProducts) {
         // store the size of child products
-        feature.getCustomProperties().set(CHILDREN_PRODUCTS_LIST_SIZE, CHILDREN_PRODUCTS_LIST_SIZE_TYPE,
-                Integer.toString(childProducts.size()));
+        feature.getAttributes().put(
+                CHILDREN_PRODUCTS_LIST_SIZE,
+                new Attribute(CHILDREN_PRODUCTS_LIST_SIZE, childProducts.size())
+        );
         // store the names of the implemented products
         for (int i = 0; i < childProducts.size(); i++) {
-            feature.getCustomProperties().set(CHILDREN_PRODUCTS_LIST_NAME_NR_ + i, CHILDREN_PRODUCTS_LIST_NAME_NR_TYPE,
-                    childProducts.get(i).getId());
+            feature.getAttributes().put(
+                    CHILDREN_PRODUCTS_LIST_NAME_NR_ + i,
+                    new Attribute(CHILDREN_PRODUCTS_LIST_NAME_NR_ + i, childProducts.get(i).getId())
+            );
         }
     }
 }

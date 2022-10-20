@@ -16,8 +16,6 @@ import de.ovgu.featureide.fm.core.base.FeatureUtils;
 import de.ovgu.featureide.fm.core.base.IConstraint;
 import de.ovgu.featureide.fm.core.base.IFeature;
 import de.ovgu.featureide.fm.core.functional.Functional;
-import de.ovgu.featureide.fm.core.init.FMCoreLibrary;
-import de.ovgu.featureide.fm.core.init.LibraryManager;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
@@ -45,14 +43,9 @@ import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTran
 
 public class PprDslToFeatureModelTransformer {
 
-    static {
-        LibraryManager.registerLibrary(FMCoreLibrary.getInstance());
-    }
-
     //private IFeatureModelFactory factory;
     private FeatureModel model;
 
-    @Override
     public FeatureModel transform(final AssemblySequence asq, final String modelName)
             throws NotSupportedVariabilityTypeException {
         try {
@@ -61,7 +54,7 @@ public class PprDslToFeatureModelTransformer {
             this.transformProducts(asq);
             this.deriveFeatureTree(asq);
             this.transformConstraints(asq);
-            TraVarTUtils.deriveFeatureModelRoot(this.factory, this.model, modelName, false);
+            TraVarTUtils.deriveFeatureModelRoot(this.model, modelName, false);
             this.optimizeFeatureModel();
             return this.model;
         } catch (final NoSuchExtensionException e) {
@@ -93,17 +86,17 @@ public class PprDslToFeatureModelTransformer {
     private void deriveFeatureTree(final AssemblySequence asq) {
         for (final Product product : asq.getProducts().values()) {
             if (PprDslUtils.isPartialProduct(product)) {
-                final Feature feature = this.model.getFeature(product.getId());
+                final Feature feature = this.model.getFeatureMap().get(product.getId());
                 if (!product.getImplementedProducts().isEmpty() && product.getImplementedProducts().size() == 1) {
                     final Product parentProduct = product.getImplementedProducts().get(0);
-                    final IFeature parentFeature = this.model.getFeature(parentProduct.getId());
+                    final Feature parentFeature = this.model.getFeatureMap().get(parentProduct.getId());
                     FeatureUtils.addChild(parentFeature, feature);
                 } else {
                     // no tree can be derived from implemented products, but constraints for each of
                     // the implemented products
                     // (Product requires implemented products)
                     for (final Product implemented : product.getImplementedProducts()) {
-                        final Feature impFeature = this.model.getFeature(implemented.getId());
+                        final Feature impFeature = this.model.getFeatureMap().get(implemented.getId());
                         assert impFeature != null;
                         if (!TraVarTUtils.isParentFeatureOf(feature, impFeature)) {
                             this.model.getConstraints().add(
@@ -122,7 +115,7 @@ public class PprDslToFeatureModelTransformer {
                 if (!product.getChildProducts().isEmpty()) {
                     for (final IProduct child : product.getChildProducts()) {
                         final Product childproduct = (Product) child;
-                        final Feature childFeature = this.model.getFeature(childproduct.getId());
+                        final Feature childFeature = this.model.getFeatureMap().get(childproduct.getId());
                         FeatureUtils.addChild(feature, childFeature);
                     }
                 }
@@ -130,7 +123,7 @@ public class PprDslToFeatureModelTransformer {
             if (!PprDslUtils.isPartialProduct(product) && product.isAbstract()) {
                 // if the dsl product is abstract the feature model e.g., mandatory features
                 for (final Product required : product.getRequires()) {
-                    final Feature mandatoryFeature = this.model.getFeature(required.getId());
+                    final Feature mandatoryFeature = this.model.getFeatureMap().get(required.getId());
                     assert mandatoryFeature != null;
                     FeatureUtils.setMandatory(mandatoryFeature, true);
                 }
@@ -141,11 +134,11 @@ public class PprDslToFeatureModelTransformer {
     private void transformConstraints(final AssemblySequence asq) {
         for (final Product product : asq.getProducts().values()) {
             if (PprDslUtils.isPartialProduct(product)) {
-                final Feature child = this.model.getFeature(product.getId());
+                final Feature child = this.model.getFeatureMap().get(product.getId());
                 assert child != null;
                 // requires constraints
                 for (final Product required : product.getRequires()) {
-                    final Feature parent = this.model.getFeature(required.getId());
+                    final Feature parent = this.model.getFeatureMap().get(required.getId());
                     if (parent != null) {
                         if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
                             this.model.getConstraints().add(
@@ -159,7 +152,7 @@ public class PprDslToFeatureModelTransformer {
                 }
                 // excludes constraints
                 for (final Product excluded : product.getExcludes()) {
-                    final Feature parent = this.model.getFeature(excluded.getId());
+                    final Feature parent = this.model.getFeatureMap().get(excluded.getId());
                     if (parent != null) {
                         if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
                             this.model.getConstraints().add(
@@ -260,8 +253,8 @@ public class PprDslToFeatureModelTransformer {
         for (final de.vill.model.constraint.Constraint constr : this.model.getConstraints()) {
             final Node cnf = constr.getNode().toCNF();
             if (Prop4JUtils.isRequires(cnf)) {
-                final IFeature left = this.model.getFeature(Prop4JUtils.getLiteralName(Prop4JUtils.getLeftLiteral(cnf)));
-                final IFeature right = this.model.getFeature(Prop4JUtils.getLiteralName(Prop4JUtils.getRightLiteral(cnf)));
+                final IFeature left = this.model.getFeatureMap().get(Prop4JUtils.getLiteralName(Prop4JUtils.getLeftLiteral(cnf)));
+                final IFeature right = this.model.getFeatureMap().get(Prop4JUtils.getLiteralName(Prop4JUtils.getRightLiteral(cnf)));
                 if (left != null && right != null && FeatureUtils.isMandatorySet(left)
                         && !FeatureUtils.isMandatorySet(right) && FeatureUtils.isRoot(FeatureUtils.getParent(left))) {
                     FeatureUtils.setMandatory(right, true);
