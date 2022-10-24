@@ -13,7 +13,6 @@ import at.sqi.ppr.model.product.Product;
 import at.sqi.ppr.model.vdi.product.IProduct;
 import de.ovgu.featureide.fm.core.ExtensionManager.NoSuchExtensionException;
 import de.ovgu.featureide.fm.core.base.FeatureUtils;
-import de.ovgu.featureide.fm.core.base.IConstraint;
 import de.ovgu.featureide.fm.core.base.IFeature;
 import de.ovgu.featureide.fm.core.functional.Functional;
 import de.vill.model.Attribute;
@@ -54,6 +53,7 @@ public class PprDslToFeatureModelTransformer {
             this.transformProducts(asq);
             this.deriveFeatureTree(asq);
             this.transformConstraints(asq);
+            // todo: fix this somehow
             TraVarTUtils.deriveFeatureModelRoot(this.model, modelName, false);
             this.optimizeFeatureModel();
             return this.model;
@@ -288,11 +288,13 @@ public class PprDslToFeatureModelTransformer {
         }
         // if there is a requires constraint in the feature model between parent and
         // child, we can remove the constraint and make the child mandatory
-        for (final IFeature childFeature : FeatureUtils.getChildren(root)) {
-            final Node requiresNode = Prop4JUtils.createImplies(Prop4JUtils.createLiteral(root),
-                    Prop4JUtils.createLiteral(childFeature));
-            final List<IConstraint> relevant = this.model.getConstraints().stream()
-                    .filter(constr -> constr.getNode().toCNF().equals(requiresNode.toCNF()))
+        for (final Feature childFeature : FeatureUtils.getChildren(root)) {
+            final de.vill.model.constraint.Constraint requiredConstraint = new ImplicationConstraint(
+                    new LiteralConstraint(root.getFeatureName()),
+                    new LiteralConstraint(childFeature.getFeatureName())
+            );
+            final List<de.vill.model.constraint.Constraint> relevant = this.model.getConstraints().stream()
+                    .filter(constr -> constr.getNode().toCNF().equals(requiredConstraint.toCNF()))
                     .collect(Collectors.toList());
             if (relevant.size() == 1) {
                 FeatureUtils.setMandatory(childFeature, true);
@@ -306,18 +308,20 @@ public class PprDslToFeatureModelTransformer {
         if (childCount > 0) {
             final List<de.vill.model.constraint.Constraint> constraints = this.model.getConstraints();
             final Set<de.vill.model.constraint.Constraint> relevantExcludesConstraints = new HashSet<>();
-            for (final IFeature childFeature : FeatureUtils.getChildren(root)) {
+            for (final Feature childFeature : UVLUtils.getChildren(root)) {
                 this.transformConstraintsToAlternativeGroup(childFeature);
-                final Set<IFeature> otherChildren = Functional.toSet(FeatureUtils.getChildren(root));
+                final Set<Feature> otherChildren = Functional.toSet(FeatureUtils.getChildren(root));
                 otherChildren.remove(childFeature);
                 for (final de.vill.model.constraint.Constraint constr : constraints) {
                     if (Prop4JUtils.isExcludes(constr.getNode().toCNF())
                             && constr.getContainedFeatures().contains(childFeature)
                             && constr.getContainedFeatures().stream().anyMatch(f -> otherChildren.contains(f))) {
-                        for (final IFeature other : otherChildren) {
-                            final Node node = Prop4JUtils.createImplies(Prop4JUtils.createLiteral(childFeature),
-                                    Prop4JUtils.createNot(Prop4JUtils.createLiteral(other)));
-                            if (constr.getNode().equals(node)) {
+                        for (final Feature other : otherChildren) {
+                            final de.vill.model.constraint.Constraint constraint = new ImplicationConstraint(
+                                    new LiteralConstraint(childFeature.getFeatureName()),
+                                    new LiteralConstraint(other.getFeatureName())
+                            );
+                            if (constr.getNode().equals(constraint)) {
                                 relevantExcludesConstraints.add(constr);
                             }
                         }

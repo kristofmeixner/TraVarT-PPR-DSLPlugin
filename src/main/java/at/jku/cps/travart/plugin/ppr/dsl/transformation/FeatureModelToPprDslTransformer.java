@@ -15,16 +15,17 @@ import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.constraint.Constraint;
 import at.sqi.ppr.model.product.Product;
 import de.ovgu.featureide.fm.core.base.FeatureUtils;
-import de.ovgu.featureide.fm.core.base.IFeature;
 import de.ovgu.featureide.fm.core.functional.Functional;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
+import de.vill.model.Group;
 import org.prop4j.Node;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -73,12 +74,12 @@ public class FeatureModelToPprDslTransformer {
         final Product product = new Product();
         product.setId(feature.getFeatureName());
         product.setName(this.restoreNameFromProperties(feature, product));
-        product.setAbstract(FeatureUtils.isAbstract(feature));
+        product.setAbstract(UVLUtils.isAbstract(feature));
         this.restoreAttributesFromProperties(feature, product);
         this.addPartialProductAttribute(product);
         PprDslUtils.addProduct(this.asq, product);
 
-        for (final Feature child : FeatureUtils.getChildren(feature)) {
+        for (final Feature child : UVLUtils.getChildren(feature)) {
             this.convertFeature(child);
         }
     }
@@ -108,7 +109,7 @@ public class FeatureModelToPprDslTransformer {
         assert product != null;
         this.restoreChildrenListOfProducts(feature, product);
         this.restoreImplementsListOfProducts(feature, product);
-        for (final Feature child : feature.getChildren()) {
+        for (final Feature child : UVLUtils.getChildren(feature)) {
             this.restoreAttributes(child);
         }
     }
@@ -175,28 +176,28 @@ public class FeatureModelToPprDslTransformer {
 
     private void restoreAttributesFromFeatureTree(final Feature feature) {
         // if parent feature is a product, it is an implements relation
-        final IFeature parentFeature = FeatureUtils.getParent(feature);
-        if (parentFeature != null && FeatureUtils.isAbstract(parentFeature) && !TraVarTUtils.isVirtualRootFeature(parentFeature)) {
-            final Product parentProduct = PprDslUtils.getProduct(this.asq, FeatureUtils.getName(parentFeature));
-            final Product childProduct = PprDslUtils.getProduct(this.asq, FeatureUtils.getName(feature));
+        final Optional<Feature> parentFeature = TraVarTUtils.getParent(feature, feature, null);
+        if (parentFeature.isPresent() && UVLUtils.isAbstract(parentFeature.get())) {
+            final Product parentProduct = PprDslUtils.getProduct(this.asq, parentFeature.get().getFeatureName());
+            final Product childProduct = PprDslUtils.getProduct(this.asq, feature.getFeatureName());
             if (!childProduct.getImplementedProducts().contains(parentProduct)) {
                 childProduct.getImplementedProducts().add(parentProduct);
             }
         }
         // if it is an alternative group the excludes constraints have to be derived
-        if (FeatureUtils.isAlternative(feature)) {
-            for (final IFeature childFeature : FeatureUtils.getChildren(feature)) {
-                final Set<IFeature> remChildren = Functional.toSet(FeatureUtils.getChildren(feature));
+        if (UVLUtils.checkGroupType(feature, Group.GroupType.ALTERNATIVE)) {
+            for (final Feature childFeature : UVLUtils.getChildren(feature)) {
+                final Set<Feature> remChildren = Functional.toSet(UVLUtils.getChildren(feature));
                 remChildren.remove(childFeature);
-                final Product childProduct = PprDslUtils.getProduct(this.asq, FeatureUtils.getName(childFeature));
-                for (final IFeature other : remChildren) {
-                    final Product otherProduct = PprDslUtils.getProduct(this.asq, FeatureUtils.getName(other));
+                final Product childProduct = PprDslUtils.getProduct(this.asq, childFeature.getFeatureName());
+                for (final Feature other : remChildren) {
+                    final Product otherProduct = PprDslUtils.getProduct(this.asq, other.getFeatureName());
                     childProduct.getExcludes().add(otherProduct);
                 }
             }
         }
 
-        for (final Feature child : feature.getChildren()) {
+        for (final Feature child : UVLUtils.getChildren(feature)) {
             this.restoreAttributesFromFeatureTree(child);
         }
     }
@@ -301,7 +302,7 @@ public class FeatureModelToPprDslTransformer {
         }
     }
 
-    private void deriveProductsFromSamples(final Feature fm) throws NotSupportedVariabilityTypeException {
+    private void deriveProductsFromSamples(final FeatureModel fm) throws NotSupportedVariabilityTypeException {
         final FeatureModelSampler sampler = new FeatureModelSampler();
         if (this.samples == null) {
             this.samples = sampler.sampleValidConfigurations(fm);

@@ -1,6 +1,5 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
-import at.jku.cps.travart.core.common.Prop4JUtils;
 import at.jku.cps.travart.core.common.TraVarTUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.sqi.ppr.model.AssemblySequence;
@@ -8,10 +7,12 @@ import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.product.Product;
 import de.ovgu.featureide.fm.core.ExtensionManager.NoSuchExtensionException;
 import de.ovgu.featureide.fm.core.base.FeatureUtils;
-import de.ovgu.featureide.fm.core.base.IConstraint;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
+import de.vill.model.constraint.ImplicationConstraint;
+import de.vill.model.constraint.LiteralConstraint;
+import de.vill.model.constraint.NotConstraint;
 
 import java.util.List;
 
@@ -78,9 +79,12 @@ public class PprDslToFeatureModelRoundtripTransformer {
                     final Feature impFeature = this.model.getFeatureMap().get(implemented.getId());
                     assert impFeature != null;
                     if (!TraVarTUtils.isParentFeatureOf(feature, impFeature)) {
-                        final IConstraint constraint = this.factory.createConstraint(this.model, Prop4JUtils.createImplies(
-                                Prop4JUtils.createLiteral(feature), Prop4JUtils.createLiteral(impFeature)));
-                        FeatureUtils.addConstraint(this.model, constraint);
+                        this.model.getConstraints().add(
+                                new ImplicationConstraint(
+                                        new LiteralConstraint((feature.getFeatureName())),
+                                        new LiteralConstraint(impFeature.getFeatureName())
+                                )
+                        );
                     }
                 }
             }
@@ -99,9 +103,12 @@ public class PprDslToFeatureModelRoundtripTransformer {
                 final Feature parent = this.model.getFeatureMap().get(required.getId());
                 assert parent != null;
                 if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                    final IConstraint constraint = this.factory.createConstraint(this.model, Prop4JUtils
-                            .createImplies(Prop4JUtils.createLiteral(child), Prop4JUtils.createLiteral(parent)));
-                    FeatureUtils.addConstraint(this.model, constraint);
+                    this.model.getConstraints().add(
+                            new ImplicationConstraint(
+                                    new LiteralConstraint((child.getFeatureName())),
+                                    new LiteralConstraint(parent.getFeatureName())
+                            )
+                    );
                 }
             }
             // excludes constraints
@@ -109,10 +116,12 @@ public class PprDslToFeatureModelRoundtripTransformer {
                 final Feature parent = this.model.getFeatureMap().get(excluded.getId());
                 assert parent != null;
                 if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                    final IConstraint constraint = this.factory.createConstraint(this.model,
-                            Prop4JUtils.createImplies(Prop4JUtils.createLiteral(child),
-                                    Prop4JUtils.createNot(Prop4JUtils.createLiteral(parent))));
-                    FeatureUtils.addConstraint(this.model, constraint);
+                    this.model.getConstraints().add(
+                            new ImplicationConstraint(
+                                    new LiteralConstraint((child.getFeatureName())),
+                                    new NotConstraint(new LiteralConstraint(parent.getFeatureName()))
+                            )
+                    );
                 }
             }
         }

@@ -8,16 +8,16 @@ import at.sqi.ppr.dsl.reader.constants.DslConstants;
 import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.product.Product;
-import de.ovgu.featureide.fm.core.base.FeatureUtils;
-import de.ovgu.featureide.fm.core.base.IFeature;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 import de.vill.model.constraint.Constraint;
+import de.vill.model.constraint.LiteralConstraint;
 import org.prop4j.Literal;
 import org.prop4j.Node;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX;
@@ -53,8 +53,8 @@ public class FeatureModelToPprDslRoundtripTransformer {
         this.restoreAttributesFromProperties(feature, product);
         this.asq.getProducts().put(product.getId(), product);
 
-        for (final Feature child : feature.getChildren()) {
-            if (TraVarTUtils.isVirtualRootFeature(feature) || !this.isEnumSubFeature(child)) {
+        for (final Feature child : UVLUtils.getChildren(feature)) {
+            if (!this.isEnumSubFeature(child)) {
                 this.convertFeature(child);
             }
         }
@@ -66,8 +66,8 @@ public class FeatureModelToPprDslRoundtripTransformer {
         this.restoreChildrenListOfProducts(feature, product);
         this.restoreImplementsListOfProducts(feature, product);
 
-        for (final Feature child : feature.getChildren()) {
-            if (TraVarTUtils.isVirtualRootFeature(feature) || !this.isEnumSubFeature(child)) {
+        for (final Feature child : UVLUtils.getChildren(feature)) {
+            if (!this.isEnumSubFeature(child)) {
                 this.restoreAttributes(child);
             }
         }
@@ -197,12 +197,12 @@ public class FeatureModelToPprDslRoundtripTransformer {
         }
         // node is an excludes --> excludes attribute
         else if (Prop4JUtils.isExcludes(cnfNode)) {
-            final Node sourceLiteral = Prop4JUtils.getLeftNode(cnfNode);
-            final Node targetLiteral = Prop4JUtils.getRightNode(cnfNode);
-            if (Prop4JUtils.isLiteral(sourceLiteral) && Prop4JUtils.isLiteral(targetLiteral)) {
+            final Constraint sourceLiteral = Prop4JUtils.getLeftNode(cnfNfode);
+            final Constraint targetLiteral = Prop4JUtils.getRightNode(cnfNode);
+            if ((sourceLiteral instanceof LiteralConstraint) && (targetLiteral instanceof LiteralConstraint)) {
                 // node is an excludes --> excludes attribute
-                final Product sourceProduct = this.getProductFromId(Prop4JUtils.getLiteralName((Literal) sourceLiteral));
-                final Product targetProduct = this.getProductFromId(Prop4JUtils.getLiteralName((Literal) targetLiteral));
+                final Product sourceProduct = this.getProductFromId(((LiteralConstraint) sourceLiteral).getLiteral());
+                final Product targetProduct = this.getProductFromId(((LiteralConstraint) targetLiteral).getLiteral());
                 sourceProduct.getExcludes().add(targetProduct);
             } else {
                 // TODO: create constraint from it
@@ -216,10 +216,8 @@ public class FeatureModelToPprDslRoundtripTransformer {
         return this.asq.getProducts().get(productId);
     }
 
-    private boolean isEnumSubFeature(final IFeature feature) {
-        // works as each tree in FeatureIDE has only one cardinality across all
-        // sub-features.
-        final IFeature parent = FeatureUtils.getParent(feature);
-        return parent != null && TraVarTUtils.isEnumerationType(parent);
+    private boolean isEnumSubFeature(final Feature feature) {
+        final Optional<Feature> parent = TraVarTUtils.getParent(feature, feature, null);
+        return parent.isPresent() && TraVarTUtils.isEnumerationType(parent.get());
     }
 }
