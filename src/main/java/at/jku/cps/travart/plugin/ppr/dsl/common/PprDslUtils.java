@@ -1,11 +1,15 @@
 package at.jku.cps.travart.plugin.ppr.dsl.common;
 
+import at.jku.cps.travart.core.common.FeatureMetaData;
 import at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties;
 import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.product.Product;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -109,5 +113,29 @@ public final class PprDslUtils {
     public static boolean isPartialProduct(final Product product) {
         return product.getAttributes().containsKey(DefaultPprDslTransformationProperties.PARTIAL_PRODUCT_ATTRIBUTE) && Boolean
                 .parseBoolean(product.getAttributes().get(DefaultPprDslTransformationProperties.PARTIAL_PRODUCT_ATTRIBUTE).getValue().getValue().toString());
+    }
+
+    public static Map<String, List<String>> createParentChildRelationship(final Map<String, FeatureMetaData> featureMetaDataMap) {
+        final Map<String, List<String>> parentChildRelationshipMap = new HashMap<>();
+
+        featureMetaDataMap.keySet()
+                .forEach(
+                        key -> {
+                            if (featureMetaDataMap.get(key).getHasParent()) {
+                                final List<String> children = parentChildRelationshipMap.getOrDefault(
+                                        featureMetaDataMap.get(key).getParentName(),
+                                        new ArrayList<>()
+                                );
+                                children.add(key);
+                                parentChildRelationshipMap.put(
+                                        featureMetaDataMap.get(key).getParentName(),
+                                        children
+                                );
+                            }
+                        }
+                );
+
+
+        return parentChildRelationshipMap;
     }
 }

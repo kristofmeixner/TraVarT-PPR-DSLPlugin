@@ -4,7 +4,7 @@ import at.jku.cps.travart.core.common.FeatureMetaData;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.FeatureModelGeneratorHelper;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
-import at.jku.cps.travart.core.helpers.UVLUtils;
+import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
 import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.product.Product;
@@ -46,13 +46,13 @@ public class PprDslToFeatureModelRoundtripTransformer {
         this.transformProducts(asq);
         this.deriveFeatureTree(asq);
         this.transformConstraints(asq);
-        final String rootName = UVLUtils.deriveFeatureModelRoot(this.featureMetaDataMap, modelName);
+        final String rootName = TraVarTUtils.deriveFeatureModelRoot(this.featureMetaDataMap, modelName);
         FeatureModelGeneratorHelper.generateModel(
                 this.model,
                 rootName,
                 this.featureMetaDataMap,
                 this.constraints,
-                FeatureModelGeneratorHelper.createParentChildRelationship(
+                PprDslUtils.createParentChildRelationship(
                         this.featureMetaDataMap
                 )
         );

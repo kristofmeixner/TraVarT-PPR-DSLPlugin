@@ -3,7 +3,6 @@ package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 import at.jku.cps.travart.core.common.IConfigurable;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
-import at.jku.cps.travart.core.helpers.UVLUtils;
 import at.jku.cps.travart.core.sampling.FeatureModelSampler;
 import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.exception.NotSupportedConstraintType;
@@ -75,12 +74,12 @@ public class FeatureModelToPprDslTransformer {
         final Product product = new Product();
         product.setId(feature.getFeatureName());
         product.setName(this.restoreNameFromProperties(feature, product));
-        product.setAbstract(UVLUtils.isAbstract(feature));
+        product.setAbstract(TraVarTUtils.isAbstract(feature));
         this.restoreAttributesFromProperties(feature, product);
         this.addPartialProductAttribute(product);
         PprDslUtils.addProduct(this.asq, product);
 
-        for (final Feature child : UVLUtils.getChildren(feature)) {
+        for (final Feature child : TraVarTUtils.getChildren(feature)) {
             this.convertFeature(child);
         }
     }
@@ -110,7 +109,7 @@ public class FeatureModelToPprDslTransformer {
         assert product != null;
         this.restoreChildrenListOfProducts(feature, product);
         this.restoreImplementsListOfProducts(feature, product);
-        for (final Feature child : UVLUtils.getChildren(feature)) {
+        for (final Feature child : TraVarTUtils.getChildren(feature)) {
             this.restoreAttributes(child);
         }
     }
@@ -137,35 +136,35 @@ public class FeatureModelToPprDslTransformer {
 
             attribute.setEntityType(DslConstants.ATTRIBUTE_ENTITY);
 
-            final Object descriptionObj = UVLUtils.getAttributeValue(feature, ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attributeName);
+            final Object descriptionObj = TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attributeName);
             if (descriptionObj != null) {
                 attribute.setDescription(descriptionObj.toString());
             }
 
-            final Object unitObj = UVLUtils.getAttributeValue(feature, ATTRIBUTE_UNIT_KEY_PRAEFIX + attributeName);
+            final Object unitObj = TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_UNIT_KEY_PRAEFIX + attributeName);
             if (unitObj != null) {
                 attribute.setDescription(descriptionObj.toString());
             }
 
-            final Object typeObj = UVLUtils.getAttributeValue(feature, ATTRIBUTE_TYPE_KEY_PRAEFIX + attributeName);
+            final Object typeObj = TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_TYPE_KEY_PRAEFIX + attributeName);
             if (typeObj != null) {
                 attribute.setType(typeObj.toString());
 
                 switch (typeObj.toString().toLowerCase()) {
                     case "number":
                         final Double defaultValue = Double.parseDouble(
-                                UVLUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString()
+                                TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString()
                         );
                         attribute.setDefaultValue(defaultValue);
-                        final Object valueObj = UVLUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName());
+                        final Object valueObj = TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName());
                         if (valueObj != null) {
                             final Double value = Double.parseDouble(valueObj.toString());
                             attribute.setValue(value);
                         }
                         break;
                     case "string":
-                        attribute.setDefaultValue(UVLUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString());
-                        attribute.setValue(UVLUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName()));
+                        attribute.setDefaultValue(TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString());
+                        attribute.setValue(TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName()));
                         break;
                 }
             }
@@ -178,7 +177,7 @@ public class FeatureModelToPprDslTransformer {
     private void restoreAttributesFromFeatureTree(final Feature feature) {
         // if parent feature is a product, it is an implements relation
         final Optional<Feature> parentFeature = TraVarTUtils.getParent(feature, feature, null);
-        if (parentFeature.isPresent() && UVLUtils.isAbstract(parentFeature.get())) {
+        if (parentFeature.isPresent() && TraVarTUtils.isAbstract(parentFeature.get())) {
             final Product parentProduct = PprDslUtils.getProduct(this.asq, parentFeature.get().getFeatureName());
             final Product childProduct = PprDslUtils.getProduct(this.asq, feature.getFeatureName());
             if (!childProduct.getImplementedProducts().contains(parentProduct)) {
@@ -186,9 +185,9 @@ public class FeatureModelToPprDslTransformer {
             }
         }
         // if it is an alternative group the excludes constraints have to be derived
-        if (UVLUtils.checkGroupType(feature, Group.GroupType.ALTERNATIVE)) {
-            for (final Feature childFeature : UVLUtils.getChildren(feature)) {
-                final Set<Feature> remChildren = Functional.toSet(UVLUtils.getChildren(feature));
+        if (TraVarTUtils.checkGroupType(feature, Group.GroupType.ALTERNATIVE)) {
+            for (final Feature childFeature : TraVarTUtils.getChildren(feature)) {
+                final Set<Feature> remChildren = Functional.toSet(TraVarTUtils.getChildren(feature));
                 remChildren.remove(childFeature);
                 final Product childProduct = PprDslUtils.getProduct(this.asq, childFeature.getFeatureName());
                 for (final Feature other : remChildren) {
@@ -198,17 +197,17 @@ public class FeatureModelToPprDslTransformer {
             }
         }
 
-        for (final Feature child : UVLUtils.getChildren(feature)) {
+        for (final Feature child : TraVarTUtils.getChildren(feature)) {
             this.restoreAttributesFromFeatureTree(child);
         }
     }
 
     private void restoreImplementsListOfProducts(final Feature feature, final Product product) {
-        final Object sizeObj = UVLUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_SIZE);
+        final Object sizeObj = TraVarTUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_SIZE);
         if (sizeObj != null) {
             final int size = Integer.parseInt(sizeObj.toString());
             for (int i = 0; i < size; i++) {
-                final String productName = UVLUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i).toString();
+                final String productName = TraVarTUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i).toString();
                 final Product implementedProduct = PprDslUtils.getProduct(this.asq, productName);
                 assert implementedProduct != null;
                 product.getImplementedProducts().add(implementedProduct);
@@ -218,12 +217,12 @@ public class FeatureModelToPprDslTransformer {
     }
 
     private void restoreChildrenListOfProducts(final Feature feature, final Product product) {
-        final Object sizeObj = UVLUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_SIZE);
+        final Object sizeObj = TraVarTUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_SIZE);
         if (sizeObj != null) {
             final int size = Integer.parseInt(sizeObj.toString());
             for (int i = 0; i < size; i++) {
                 final String productName =
-                        UVLUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_NAME_NR_ + i).toString();
+                        TraVarTUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_NAME_NR_ + i).toString();
                 final Product childrenProduct = PprDslUtils.getProduct(this.asq, productName);
                 assert childrenProduct != null;
                 product.getChildren().add(childrenProduct);
@@ -235,7 +234,7 @@ public class FeatureModelToPprDslTransformer {
     private void convertConstraints(final List<de.vill.model.constraint.Constraint> constraints) throws NotSupportedConstraintType {
         long constrNumber = 0;
         for (final de.vill.model.constraint.Constraint constraint : constraints) {
-            if (UVLUtils.isRequires(constraint) || UVLUtils.isExcludes(constraint)) {
+            if (TraVarTUtils.isRequires(constraint) || TraVarTUtils.isExcludes(constraint)) {
                 final Product left = PprDslUtils.getProduct(
                         this.asq,
                         constraint.getConstraintSubParts().get(0).toString()
@@ -245,7 +244,7 @@ public class FeatureModelToPprDslTransformer {
                         constraint.getConstraintSubParts().get(1).toString()
                 );
                 if (left != null && right != null && !left.getRequires().contains(right)) {
-                    if (UVLUtils.isRequires(constraint)) {
+                    if (TraVarTUtils.isRequires(constraint)) {
                         left.getRequires().add(right);
                     } else {
                         left.getExcludes().add(right);
@@ -280,7 +279,7 @@ public class FeatureModelToPprDslTransformer {
 
     private void toNodeString(final StringBuffer buffer, final de.vill.model.constraint.Constraint constraint) throws NotSupportedConstraintType {
         // todo: check max depth function
-        if (UVLUtils.getMaxDepth(constraint) == 1) {
+        if (TraVarTUtils.getMaxDepth(constraint) == 1) {
             buffer.append(constraint);
         } else if (constraint instanceof ImplicationConstraint || constraint instanceof AndConstraint || constraint instanceof OrConstraint) {
             this.toNodeString(buffer, constraint.getConstraintSubParts().get(0));
@@ -298,7 +297,7 @@ public class FeatureModelToPprDslTransformer {
                 buffer.append(" ");
             }
             // TODO:
-            this.toNodeString(buffer, UVLUtils.getRightConstraint(constraint));
+            this.toNodeString(buffer, TraVarTUtils.getRightConstraint(constraint));
         } else if (constraint instanceof NotConstraint) {
             buffer.append(" ");
             buffer.append(ConstraintDefinitionParser.NOT);

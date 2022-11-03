@@ -4,7 +4,6 @@ import at.jku.cps.travart.core.common.FeatureMetaData;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.FeatureModelGeneratorHelper;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
-import at.jku.cps.travart.core.helpers.UVLUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.parser.ConstraintDefinitionParser;
 import at.sqi.ppr.model.AssemblySequence;
@@ -55,13 +54,13 @@ public class PprDslToFeatureModelTransformer {
         this.transformProducts(asq);
         this.deriveFeatureTree(asq);
         this.transformConstraints(asq);
-        final String rootName = UVLUtils.deriveFeatureModelRoot(this.featureMetaDataMap, modelName);
+        final String rootName = TraVarTUtils.deriveFeatureModelRoot(this.featureMetaDataMap, modelName);
         FeatureModelGeneratorHelper.generateModel(
                 this.model,
                 rootName,
                 this.featureMetaDataMap,
                 this.constraints,
-                FeatureModelGeneratorHelper.createParentChildRelationship(
+                PprDslUtils.createParentChildRelationship(
                         this.featureMetaDataMap
                 )
         );
@@ -274,7 +273,7 @@ public class PprDslToFeatureModelTransformer {
     private void fixFalseOptionalFeaturesByConstraints() {
         final Set<de.vill.model.constraint.Constraint> toDelete = new HashSet<>();
         for (final de.vill.model.constraint.Constraint constr : this.model.getConstraints()) {
-            if (UVLUtils.isRequires(constr)) {
+            if (TraVarTUtils.isRequires(constr)) {
                 final FeatureMetaData left = this.featureMetaDataMap.get(
                         constr.getConstraintSubParts().get(0).toString()
                 );
@@ -298,14 +297,14 @@ public class PprDslToFeatureModelTransformer {
     private void fixFalseOptionalFeaturesByAbstractFeatureGroup(final Feature root) {
         // todo: think about multiple getChildren calls
         // todo: check if it works
-        for (final Feature child : UVLUtils.getChildren(root)) {
+        for (final Feature child : TraVarTUtils.getChildren(root)) {
             this.fixFalseOptionalFeaturesByAbstractFeatureGroup(child);
         }
-        if (UVLUtils.getChildren(root).size() > 0 && UVLUtils.isAbstract(root)
-                && (UVLUtils.checkGroupType(root, Group.GroupType.OR) || UVLUtils.checkGroupType(root, Group.GroupType.ALTERNATIVE))) {
+        if (TraVarTUtils.getChildren(root).size() > 0 && TraVarTUtils.isAbstract(root)
+                && (TraVarTUtils.checkGroupType(root, Group.GroupType.OR) || TraVarTUtils.checkGroupType(root, Group.GroupType.ALTERNATIVE))) {
             // abstract features where all child features are mandatory are also mandatory
             boolean childMandatory = true;
-            for (final Feature childFeature : UVLUtils.getChildren(root)) {
+            for (final Feature childFeature : TraVarTUtils.getChildren(root)) {
                 childMandatory = childMandatory && Group.GroupType.MANDATORY.equals(this.featureMetaDataMap.get(childFeature.getFeatureName()).getParentGroupType());
             }
             if (childMandatory) {
@@ -317,12 +316,12 @@ public class PprDslToFeatureModelTransformer {
     }
 
     private void fixFalseOptionalFeaturesByFeatureGroupConstraints(final Feature root) {
-        for (final Feature child : UVLUtils.getChildren(root)) {
+        for (final Feature child : TraVarTUtils.getChildren(root)) {
             this.fixFalseOptionalFeaturesByFeatureGroupConstraints(child);
         }
         // if there is a requires constraint in the feature model between parent and
         // child, we can remove the constraint and make the child mandatory
-        for (final Feature childFeature : UVLUtils.getChildren(root)) {
+        for (final Feature childFeature : TraVarTUtils.getChildren(root)) {
             final de.vill.model.constraint.Constraint requiredConstraint = new ImplicationConstraint(
                     new LiteralConstraint(root.getFeatureName()),
                     new LiteralConstraint(childFeature.getFeatureName())
@@ -340,16 +339,16 @@ public class PprDslToFeatureModelTransformer {
     }
 
     private void transformConstraintsToAlternativeGroup(final Feature root) {
-        final int childCount = UVLUtils.getChildren(root).size();
+        final int childCount = TraVarTUtils.getChildren(root).size();
         if (childCount > 0) {
             final List<de.vill.model.constraint.Constraint> constraints = this.model.getConstraints();
             final Set<de.vill.model.constraint.Constraint> relevantExcludesConstraints = new HashSet<>();
-            for (final Feature childFeature : UVLUtils.getChildren(root)) {
+            for (final Feature childFeature : TraVarTUtils.getChildren(root)) {
                 this.transformConstraintsToAlternativeGroup(childFeature);
-                final Set<Feature> otherChildren = Functional.toSet(UVLUtils.getChildren(root));
+                final Set<Feature> otherChildren = Functional.toSet(TraVarTUtils.getChildren(root));
                 otherChildren.remove(childFeature);
                 for (final de.vill.model.constraint.Constraint constr : constraints) {
-                    if (UVLUtils.isExcludes(constr)
+                    if (TraVarTUtils.isExcludes(constr)
                             && constr.getConstraintSubParts().contains(childFeature)
                             && constr.getConstraintSubParts().stream().anyMatch(otherChildren::contains)) {
                         for (final Feature other : otherChildren) {

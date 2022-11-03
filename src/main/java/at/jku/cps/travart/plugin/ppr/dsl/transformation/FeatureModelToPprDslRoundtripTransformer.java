@@ -2,7 +2,6 @@ package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
-import at.jku.cps.travart.core.helpers.UVLUtils;
 import at.sqi.ppr.dsl.reader.constants.DslConstants;
 import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.NamedObject;
@@ -46,11 +45,11 @@ public class FeatureModelToPprDslRoundtripTransformer {
         final Product product = new Product();
         product.setId(feature.getFeatureName());
         product.setName(this.restoreNameFromProperties(feature, product));
-        product.setAbstract(UVLUtils.isAbstract(feature));
+        product.setAbstract(TraVarTUtils.isAbstract(feature));
         this.restoreAttributesFromProperties(feature, product);
         this.asq.getProducts().put(product.getId(), product);
 
-        for (final Feature child : UVLUtils.getChildren(feature)) {
+        for (final Feature child : TraVarTUtils.getChildren(feature)) {
             if (!this.isEnumSubFeature(child)) {
                 this.convertFeature(child);
             }
@@ -63,7 +62,7 @@ public class FeatureModelToPprDslRoundtripTransformer {
         this.restoreChildrenListOfProducts(feature, product);
         this.restoreImplementsListOfProducts(feature, product);
 
-        for (final Feature child : UVLUtils.getChildren(feature)) {
+        for (final Feature child : TraVarTUtils.getChildren(feature)) {
             if (!this.isEnumSubFeature(child)) {
                 this.restoreAttributes(child);
             }
@@ -93,23 +92,23 @@ public class FeatureModelToPprDslRoundtripTransformer {
             attribute.setEntityType(DslConstants.ATTRIBUTE_ENTITY);
 
             attribute.setDescription(
-                    UVLUtils.getAttributeValue(feature, ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attributeName).toString()
+                    TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX + attributeName).toString()
             );
             attribute.setUnit(
-                    UVLUtils.getAttributeValue(feature, ATTRIBUTE_UNIT_KEY_PRAEFIX + attributeName).toString()
+                    TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_UNIT_KEY_PRAEFIX + attributeName).toString()
             );
 
-            final String type = UVLUtils.getAttributeValue(feature, ATTRIBUTE_TYPE_KEY_PRAEFIX + attributeName).toString();
+            final String type = TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_TYPE_KEY_PRAEFIX + attributeName).toString();
             attribute.setType(type);
 
             switch (type.toLowerCase()) {
                 case "number":
                     final Double defaultValue = Double.parseDouble(
-                            UVLUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString()
+                            TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString()
                     );
                     attribute.setDefaultValue(defaultValue);
                     final Object valueStr =
-                            UVLUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName());
+                            TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName());
                     if (valueStr != null) {
                         final Double value = Double.parseDouble(valueStr.toString());
                         attribute.setValue(value);
@@ -117,10 +116,10 @@ public class FeatureModelToPprDslRoundtripTransformer {
                     break;
                 case "string":
                     attribute.setDefaultValue(
-                            UVLUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString()
+                            TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX + attributeName).toString()
                     );
                     attribute.setValue(
-                            UVLUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName()).toString()
+                            TraVarTUtils.getAttributeValue(feature, ATTRIBUTE_VALUE_KEY_PRAEFIX + attribute.getName()).toString()
                     );
                     break;
             }
@@ -132,11 +131,11 @@ public class FeatureModelToPprDslRoundtripTransformer {
     }
 
     private void restoreImplementsListOfProducts(final Feature feature, final Product product) {
-        final Object sizeObj = UVLUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_SIZE);
+        final Object sizeObj = TraVarTUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_SIZE);
         if (sizeObj != null) {
             final int size = Integer.parseInt(sizeObj.toString());
             for (int i = 0; i < size; i++) {
-                final String productName = UVLUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i).toString();
+                final String productName = TraVarTUtils.getAttributeValue(feature, IMPLEMENTED_PRODUCTS_LIST_NAME_NR_ + i).toString();
                 final Product implementedProduct = this.getProductFromId(productName);
                 assert implementedProduct != null;
                 product.getImplementedProducts().add(implementedProduct);
@@ -145,11 +144,11 @@ public class FeatureModelToPprDslRoundtripTransformer {
     }
 
     private void restoreChildrenListOfProducts(final Feature feature, final Product product) {
-        final Object sizeObj = UVLUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_SIZE);
+        final Object sizeObj = TraVarTUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_SIZE);
         if (sizeObj != null) {
             final int size = Integer.parseInt(sizeObj.toString());
             for (int i = 0; i < size; i++) {
-                final String productName = UVLUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_NAME_NR_ + i).toString();
+                final String productName = TraVarTUtils.getAttributeValue(feature, CHILDREN_PRODUCTS_LIST_NAME_NR_ + i).toString();
                 final Product childrenProduct = this.getProductFromId(productName);
                 assert childrenProduct != null;
                 product.getChildren().add(childrenProduct);
@@ -169,7 +168,7 @@ public class FeatureModelToPprDslRoundtripTransformer {
         // A requires B <=> CNF: Not(A) or B
         // A excludes B <=> CNF: Not(A) or Not(B)
 
-        if (UVLUtils.isComplexConstraint(constraint)) {
+        if (TraVarTUtils.isComplexConstraint(constraint)) {
             for (final Constraint child : constraint.getConstraintSubParts()) {
                 this.convertConstraintNodeRec(child);
             }
@@ -181,9 +180,9 @@ public class FeatureModelToPprDslRoundtripTransformer {
     private void convertConstraintNode(final Constraint constraint) {
         // TODO: Check coz 110% this is incorrect
         // node is an implies --> requires attribute
-        if (UVLUtils.isRequires(constraint)) {
-            final Constraint sourceLiteral = UVLUtils.getFirstNegativeLiteral(constraint);
-            final Constraint targetLiteral = UVLUtils.getFirstPositiveLiteral(constraint);
+        if (TraVarTUtils.isRequires(constraint)) {
+            final Constraint sourceLiteral = TraVarTUtils.getFirstNegativeLiteral(constraint);
+            final Constraint targetLiteral = TraVarTUtils.getFirstPositiveLiteral(constraint);
 
             if (sourceLiteral instanceof LiteralConstraint && targetLiteral instanceof LiteralConstraint) {
                 // node is an implies --> requires attribute
@@ -195,7 +194,7 @@ public class FeatureModelToPprDslRoundtripTransformer {
             }
         }
         // node is an excludes --> excludes attribute
-        else if (UVLUtils.isExcludes(constraint)) {
+        else if (TraVarTUtils.isExcludes(constraint)) {
             final Constraint sourceLiteral = constraint.getConstraintSubParts().get(0);
             final Constraint targetLiteral = constraint.getConstraintSubParts().get(1);
             if ((sourceLiteral instanceof LiteralConstraint) && (targetLiteral instanceof LiteralConstraint)) {
