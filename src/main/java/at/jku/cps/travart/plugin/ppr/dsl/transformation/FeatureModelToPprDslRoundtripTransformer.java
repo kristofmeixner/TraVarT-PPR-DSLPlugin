@@ -1,6 +1,5 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
-import at.jku.cps.travart.core.common.Prop4JUtils;
 import at.jku.cps.travart.core.common.TraVarTUtils;
 import at.jku.cps.travart.core.common.UVLUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
@@ -13,8 +12,6 @@ import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 import de.vill.model.constraint.Constraint;
 import de.vill.model.constraint.LiteralConstraint;
-import org.prop4j.Literal;
-import org.prop4j.Node;
 
 import java.util.List;
 import java.util.Optional;
@@ -162,43 +159,45 @@ public class FeatureModelToPprDslRoundtripTransformer {
 
     private void convertConstraints(final List<Constraint> constraints) {
         for (final Constraint constraint : constraints) {
-            this.convertConstraintNodeRec(constraint.getNode());
+            this.convertConstraintNodeRec(constraint);
         }
     }
 
-    private void convertConstraintNodeRec(final Node node) {
+    private void convertConstraintNodeRec(final Constraint constraint) {
         // create a CNF from nodes enables separating the concerns how to transform the
         // different groups.
         // A requires B <=> CNF: Not(A) or B
         // A excludes B <=> CNF: Not(A) or Not(B)
-        final Node cnfNode = node.toCNF();
-        if (Prop4JUtils.isComplexNode(cnfNode)) {
-            for (final Node child : cnfNode.getChildren()) {
+
+        if (UVLUtils.isComplexConstraint(constraint)) {
+            for (final Constraint child : constraint.getConstraintSubParts()) {
                 this.convertConstraintNodeRec(child);
             }
         } else {
-            this.convertConstraintNode(cnfNode);
+            this.convertConstraintNode(constraint);
         }
     }
 
-    private void convertConstraintNode(final Node cnfNode) {
+    private void convertConstraintNode(final Constraint constraint) {
+        // TODO: Check coz 110% this is incorrect
         // node is an implies --> requires attribute
-        if (Prop4JUtils.isRequires(cnfNode)) {
-            final Node sourceLiteral = Prop4JUtils.getFirstNegativeLiteral(cnfNode);
-            final Node targetLiteral = Prop4JUtils.getFirstPositiveLiteral(cnfNode);
-            if (Prop4JUtils.isLiteral(sourceLiteral) && Prop4JUtils.isLiteral(targetLiteral)) {
+        if (UVLUtils.isRequires(constraint)) {
+            final Constraint sourceLiteral = UVLUtils.getFirstNegativeLiteral(constraint);
+            final Constraint targetLiteral = UVLUtils.getFirstPositiveLiteral(constraint);
+
+            if (sourceLiteral instanceof LiteralConstraint && targetLiteral instanceof LiteralConstraint) {
                 // node is an implies --> requires attribute
-                final Product sourceProduct = this.getProductFromId(Prop4JUtils.getLiteralName((Literal) sourceLiteral));
-                final Product targetProduct = this.getProductFromId(Prop4JUtils.getLiteralName((Literal) targetLiteral));
+                final Product sourceProduct = this.getProductFromId(((LiteralConstraint) sourceLiteral).getLiteral());
+                final Product targetProduct = this.getProductFromId(((LiteralConstraint) targetLiteral).getLiteral());
                 sourceProduct.getRequires().add(targetProduct);
             } else {
                 // TODO: create constraint from it
             }
         }
         // node is an excludes --> excludes attribute
-        else if (Prop4JUtils.isExcludes(cnfNode)) {
-            final Constraint sourceLiteral = Prop4JUtils.getLeftNode(cnfNfode);
-            final Constraint targetLiteral = Prop4JUtils.getRightNode(cnfNode);
+        else if (UVLUtils.isExcludes(constraint)) {
+            final Constraint sourceLiteral = constraint.getConstraintSubParts().get(0);
+            final Constraint targetLiteral = constraint.getConstraintSubParts().get(1);
             if ((sourceLiteral instanceof LiteralConstraint) && (targetLiteral instanceof LiteralConstraint)) {
                 // node is an excludes --> excludes attribute
                 final Product sourceProduct = this.getProductFromId(((LiteralConstraint) sourceLiteral).getLiteral());

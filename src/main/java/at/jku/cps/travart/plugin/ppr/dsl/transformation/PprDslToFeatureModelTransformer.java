@@ -1,9 +1,10 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
-import at.jku.cps.travart.core.common.Prop4JUtils;
+import at.jku.cps.travart.core.common.FeatureMetaData;
 import at.jku.cps.travart.core.common.TraVarTUtils;
 import at.jku.cps.travart.core.common.UVLUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
+import at.jku.cps.travart.core.helpers.FeatureModelGeneratorHelper;
 import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.parser.ConstraintDefinitionParser;
 import at.sqi.ppr.model.AssemblySequence;
@@ -11,20 +12,20 @@ import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.constraint.Constraint;
 import at.sqi.ppr.model.product.Product;
 import at.sqi.ppr.model.vdi.product.IProduct;
-import de.ovgu.featureide.fm.core.ExtensionManager.NoSuchExtensionException;
-import de.ovgu.featureide.fm.core.base.FeatureUtils;
-import de.ovgu.featureide.fm.core.base.IFeature;
 import de.ovgu.featureide.fm.core.functional.Functional;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
+import de.vill.model.Group;
 import de.vill.model.constraint.ImplicationConstraint;
 import de.vill.model.constraint.LiteralConstraint;
 import de.vill.model.constraint.NotConstraint;
-import org.prop4j.Node;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,22 +45,29 @@ public class PprDslToFeatureModelTransformer {
 
     //private IFeatureModelFactory factory;
     private FeatureModel model;
+    private final Map<String, FeatureMetaData> featureMetaDataMap = new HashMap<>();
+    private final List<de.vill.model.constraint.Constraint> constraints = new ArrayList<>();
 
     public FeatureModel transform(final AssemblySequence asq, final String modelName)
             throws NotSupportedVariabilityTypeException {
-        try {
-            //this.factory = FMFactoryManager.getInstance().getFactory(DefaultFeatureModelFactory.ID);
-            this.model = new FeatureModel();
-            this.transformProducts(asq);
-            this.deriveFeatureTree(asq);
-            this.transformConstraints(asq);
-            // todo: fix this somehow
-            TraVarTUtils.deriveFeatureModelRoot(this.model, modelName, false);
-            this.optimizeFeatureModel();
-            return this.model;
-        } catch (final NoSuchExtensionException e) {
-            throw new NotSupportedVariabilityTypeException(e);
-        }
+        //this.factory = FMFactoryManager.getInstance().getFactory(DefaultFeatureModelFactory.ID);
+        this.model = new FeatureModel();
+        this.transformProducts(asq);
+        this.deriveFeatureTree(asq);
+        this.transformConstraints(asq);
+        final String rootName = UVLUtils.deriveFeatureModelRoot(this.featureMetaDataMap, modelName);
+        FeatureModelGeneratorHelper.generateModel(
+                this.model,
+                rootName,
+                this.featureMetaDataMap,
+                this.constraints,
+                FeatureModelGeneratorHelper.createParentChildRelationship(
+                        this.featureMetaDataMap
+                )
+        );
+
+        this.optimizeFeatureModel();
+        return this.model;
     }
 
     private void transformProducts(final AssemblySequence asq) {
@@ -78,7 +86,15 @@ public class PprDslToFeatureModelTransformer {
                     this.storeCustomAttributesAsProperty(feature, attribute);
                 }
 
-                FeatureUtils.addFeature(this.model, feature);
+//                this.model.getFeatureMap().put(feature.getFeatureName(), feature);
+                // todo
+                this.featureMetaDataMap.put(feature.getFeatureName(), new FeatureMetaData(
+                        Boolean.FALSE,
+                        null,
+                        Group.GroupType.OPTIONAL,
+                        feature,
+                        new HashMap<>()
+                ));
             }
         }
     }
@@ -89,17 +105,20 @@ public class PprDslToFeatureModelTransformer {
                 final Feature feature = this.model.getFeatureMap().get(product.getId());
                 if (!product.getImplementedProducts().isEmpty() && product.getImplementedProducts().size() == 1) {
                     final Product parentProduct = product.getImplementedProducts().get(0);
-                    final Feature parentFeature = this.model.getFeatureMap().get(parentProduct.getId());
-                    FeatureUtils.addChild(parentFeature, feature);
+                    final Feature parentFeature = this.featureMetaDataMap.get(parentProduct.getId()).getFeature();
+                    final FeatureMetaData featureMetaData = this.featureMetaDataMap.get(feature.getFeatureName());
+                    featureMetaData.setHasParent(Boolean.TRUE);
+                    featureMetaData.setParentName(parentFeature.getFeatureName());
+                    this.featureMetaDataMap.put(feature.getFeatureName(), featureMetaData);
                 } else {
                     // no tree can be derived from implemented products, but constraints for each of
                     // the implemented products
                     // (Product requires implemented products)
                     for (final Product implemented : product.getImplementedProducts()) {
-                        final Feature impFeature = this.model.getFeatureMap().get(implemented.getId());
+                        final Feature impFeature = this.featureMetaDataMap.get(implemented.getId()).getFeature();
                         assert impFeature != null;
                         if (!TraVarTUtils.isParentFeatureOf(feature, impFeature)) {
-                            this.model.getConstraints().add(
+                            this.constraints.add(
                                     new ImplicationConstraint(
                                             new LiteralConstraint(feature.getFeatureName()),
                                             new LiteralConstraint(impFeature.getFeatureName())
@@ -115,17 +134,21 @@ public class PprDslToFeatureModelTransformer {
                 if (!product.getChildProducts().isEmpty()) {
                     for (final IProduct child : product.getChildProducts()) {
                         final Product childproduct = (Product) child;
-                        final Feature childFeature = this.model.getFeatureMap().get(childproduct.getId());
-                        FeatureUtils.addChild(feature, childFeature);
+                        final Feature childFeature = this.featureMetaDataMap.get(childproduct.getId()).getFeature();
+                        final FeatureMetaData featureMetaData = this.featureMetaDataMap.get(childFeature.getFeatureName());
+                        featureMetaData.setHasParent(Boolean.TRUE);
+                        featureMetaData.setParentName(feature.getFeatureName());
+                        this.featureMetaDataMap.put(childFeature.getFeatureName(), featureMetaData);
                     }
                 }
             }
             if (!PprDslUtils.isPartialProduct(product) && product.isAbstract()) {
                 // if the dsl product is abstract the feature model e.g., mandatory features
                 for (final Product required : product.getRequires()) {
-                    final Feature mandatoryFeature = this.model.getFeatureMap().get(required.getId());
+                    final FeatureMetaData mandatoryFeature = this.featureMetaDataMap.get(required.getId());
                     assert mandatoryFeature != null;
-                    FeatureUtils.setMandatory(mandatoryFeature, true);
+                    mandatoryFeature.setParentGroupType(Group.GroupType.MANDATORY);
+                    this.featureMetaDataMap.put(required.getId(), mandatoryFeature);
                 }
             }
         }
@@ -134,14 +157,14 @@ public class PprDslToFeatureModelTransformer {
     private void transformConstraints(final AssemblySequence asq) {
         for (final Product product : asq.getProducts().values()) {
             if (PprDslUtils.isPartialProduct(product)) {
-                final Feature child = this.model.getFeatureMap().get(product.getId());
+                final Feature child = this.featureMetaDataMap.get(product.getId()).getFeature();
                 assert child != null;
                 // requires constraints
                 for (final Product required : product.getRequires()) {
-                    final Feature parent = this.model.getFeatureMap().get(required.getId());
+                    final Feature parent = this.featureMetaDataMap.get(required.getId()).getFeature();
                     if (parent != null) {
                         if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                            this.model.getConstraints().add(
+                            this.constraints.add(
                                     new ImplicationConstraint(
                                             new LiteralConstraint((child.getFeatureName())),
                                             new LiteralConstraint(parent.getFeatureName())
@@ -152,10 +175,10 @@ public class PprDslToFeatureModelTransformer {
                 }
                 // excludes constraints
                 for (final Product excluded : product.getExcludes()) {
-                    final Feature parent = this.model.getFeatureMap().get(excluded.getId());
+                    final Feature parent = this.featureMetaDataMap.get(excluded.getId()).getFeature();
                     if (parent != null) {
                         if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                            this.model.getConstraints().add(
+                            this.constraints.add(
                                     new ImplicationConstraint(
                                             new LiteralConstraint((child.getFeatureName())),
                                             new NotConstraint(new LiteralConstraint(parent.getFeatureName()))
@@ -168,8 +191,8 @@ public class PprDslToFeatureModelTransformer {
         }
         for (final Constraint constr : asq.getGlobalConstraints()) {
             final ConstraintDefinitionParser parser = new ConstraintDefinitionParser(this.model);
-            final de.vill.model.constraint.Constraint fmConstraint = parser.parse(constr.getDefinition());
-            this.model.getConstraints().add(fmConstraint);
+            final de.vill.model.constraint.Constraint constraint = parser.parse(constr.getDefinition());
+            this.constraints.add(constraint);
         }
     }
 
@@ -239,89 +262,102 @@ public class PprDslToFeatureModelTransformer {
 
     private void optimizeFeatureModel() { // final AssemblySequence asq
         // find mandatory features within feature groups
-        this.fixFalseOptionalFeaturesByFeatureGroupConstraints(FeatureUtils.getRoot(this.model));
+        this.fixFalseOptionalFeaturesByFeatureGroupConstraints(this.model.getRootFeature());
         // find mandatory features within abstract feature groups
-        this.fixFalseOptionalFeaturesByAbstractFeatureGroup(FeatureUtils.getRoot(this.model));
+        this.fixFalseOptionalFeaturesByAbstractFeatureGroup(this.model.getRootFeature());
         // find mandatory features within requires constraints
         this.fixFalseOptionalFeaturesByConstraints();
         // find alternative groups
-        this.transformConstraintsToAlternativeGroup(FeatureUtils.getRoot(this.model));
+        this.transformConstraintsToAlternativeGroup(this.model.getRootFeature());
     }
 
     private void fixFalseOptionalFeaturesByConstraints() {
         final Set<de.vill.model.constraint.Constraint> toDelete = new HashSet<>();
         for (final de.vill.model.constraint.Constraint constr : this.model.getConstraints()) {
-            final Node cnf = constr.getNode().toCNF();
-            if (Prop4JUtils.isRequires(cnf)) {
-                final IFeature left = this.model.getFeatureMap().get(Prop4JUtils.getLiteralName(Prop4JUtils.getLeftLiteral(cnf)));
-                final IFeature right = this.model.getFeatureMap().get(Prop4JUtils.getLiteralName(Prop4JUtils.getRightLiteral(cnf)));
-                if (left != null && right != null && FeatureUtils.isMandatorySet(left)
-                        && !FeatureUtils.isMandatorySet(right) && FeatureUtils.isRoot(FeatureUtils.getParent(left))) {
-                    FeatureUtils.setMandatory(right, true);
+            if (UVLUtils.isRequires(constr)) {
+                final FeatureMetaData left = this.featureMetaDataMap.get(
+                        constr.getConstraintSubParts().get(0).toString()
+                );
+                final FeatureMetaData right = this.featureMetaDataMap.get(
+                        constr.getConstraintSubParts().get(1).toString()
+                );
+//                final Feature left = this.model.getFeatureMap().get(TraVarTUtils.getLeftLiteral(cnf));
+//                final Feature right = this.model.getFeatureMap().get(Prop4JUtils.getLiteralName(Prop4JUtils.getRightLiteral(cnf)));
+                if (left != null && right != null && Group.GroupType.MANDATORY.equals(left.getParentGroupType())
+                        && !Group.GroupType.MANDATORY.equals(right.getParentGroupType()) && left.getHasParent() &&
+                        this.featureMetaDataMap.get(left.getParentName()).getHasParent().equals(Boolean.FALSE)) {
+                    right.setParentGroupType(Group.GroupType.MANDATORY);
+                    this.featureMetaDataMap.put(right.getFeature().getFeatureName(), right);
                     toDelete.add(constr);
                 }
             }
         }
-        toDelete.forEach(constr -> this.model.removeConstraint(constr));
+        toDelete.forEach(this.constraints::remove);
     }
 
     private void fixFalseOptionalFeaturesByAbstractFeatureGroup(final Feature root) {
-        for (final Feature child : root.getChildren()) {
+        // todo: think about multiple getChildren calls
+        // todo: check if it works
+        for (final Feature child : UVLUtils.getChildren(root)) {
             this.fixFalseOptionalFeaturesByAbstractFeatureGroup(child);
         }
-        if (FeatureUtils.getChildrenCount(root) > 0 && UVLUtils.isAbstract(root)
-                && (FeatureUtils.isOr(root) || FeatureUtils.isAlternative(root))) {
+        if (UVLUtils.getChildren(root).size() > 0 && UVLUtils.isAbstract(root)
+                && (UVLUtils.checkGroupType(root, Group.GroupType.OR) || UVLUtils.checkGroupType(root, Group.GroupType.ALTERNATIVE))) {
             // abstract features where all child features are mandatory are also mandatory
             boolean childMandatory = true;
-            for (final IFeature childFeature : FeatureUtils.getChildren(root)) {
-                childMandatory = childMandatory && FeatureUtils.isMandatorySet(childFeature);
+            for (final Feature childFeature : UVLUtils.getChildren(root)) {
+                childMandatory = childMandatory && Group.GroupType.MANDATORY.equals(this.featureMetaDataMap.get(childFeature.getFeatureName()).getParentGroupType());
             }
             if (childMandatory) {
-                FeatureUtils.setMandatory(root, true);
+                final FeatureMetaData metaData = this.featureMetaDataMap.get(root.getFeatureName());
+                metaData.setParentGroupType(Group.GroupType.MANDATORY);
+                this.featureMetaDataMap.put(root.getFeatureName(), metaData);
             }
         }
     }
 
     private void fixFalseOptionalFeaturesByFeatureGroupConstraints(final Feature root) {
-        for (final Feature child : root.getChildren()) {
+        for (final Feature child : UVLUtils.getChildren(root)) {
             this.fixFalseOptionalFeaturesByFeatureGroupConstraints(child);
         }
         // if there is a requires constraint in the feature model between parent and
         // child, we can remove the constraint and make the child mandatory
-        for (final Feature childFeature : FeatureUtils.getChildren(root)) {
+        for (final Feature childFeature : UVLUtils.getChildren(root)) {
             final de.vill.model.constraint.Constraint requiredConstraint = new ImplicationConstraint(
                     new LiteralConstraint(root.getFeatureName()),
                     new LiteralConstraint(childFeature.getFeatureName())
             );
             final List<de.vill.model.constraint.Constraint> relevant = this.model.getConstraints().stream()
-                    .filter(constr -> constr.getNode().toCNF().equals(requiredConstraint.toCNF()))
+                    .filter(constr -> constr.equals(requiredConstraint))
                     .collect(Collectors.toList());
             if (relevant.size() == 1) {
-                FeatureUtils.setMandatory(childFeature, true);
-                this.model.removeConstraint(relevant.get(0));
+                final FeatureMetaData metaData = this.featureMetaDataMap.get(childFeature.getFeatureName());
+                metaData.setParentGroupType(Group.GroupType.MANDATORY);
+                this.featureMetaDataMap.put(childFeature.getFeatureName(), metaData);
+                this.constraints.remove(relevant.get(0));
             }
         }
     }
 
     private void transformConstraintsToAlternativeGroup(final Feature root) {
-        final int childCount = FeatureUtils.getChildrenCount(root);
+        final int childCount = UVLUtils.getChildren(root).size();
         if (childCount > 0) {
             final List<de.vill.model.constraint.Constraint> constraints = this.model.getConstraints();
             final Set<de.vill.model.constraint.Constraint> relevantExcludesConstraints = new HashSet<>();
             for (final Feature childFeature : UVLUtils.getChildren(root)) {
                 this.transformConstraintsToAlternativeGroup(childFeature);
-                final Set<Feature> otherChildren = Functional.toSet(FeatureUtils.getChildren(root));
+                final Set<Feature> otherChildren = Functional.toSet(UVLUtils.getChildren(root));
                 otherChildren.remove(childFeature);
                 for (final de.vill.model.constraint.Constraint constr : constraints) {
-                    if (Prop4JUtils.isExcludes(constr.getNode().toCNF())
-                            && constr.getContainedFeatures().contains(childFeature)
-                            && constr.getContainedFeatures().stream().anyMatch(f -> otherChildren.contains(f))) {
+                    if (UVLUtils.isExcludes(constr)
+                            && constr.getConstraintSubParts().contains(childFeature)
+                            && constr.getConstraintSubParts().stream().anyMatch(otherChildren::contains)) {
                         for (final Feature other : otherChildren) {
                             final de.vill.model.constraint.Constraint constraint = new ImplicationConstraint(
                                     new LiteralConstraint(childFeature.getFeatureName()),
                                     new LiteralConstraint(other.getFeatureName())
                             );
-                            if (constr.getNode().equals(constraint)) {
+                            if (constr.equals(constraint)) {
                                 relevantExcludesConstraints.add(constr);
                             }
                         }
@@ -332,8 +368,10 @@ public class PprDslToFeatureModelTransformer {
             if (!relevantExcludesConstraints.isEmpty()
                     // is <= really correct? we do not want to remove to much constraints
                     && childCount * (childCount - 1) <= relevantExcludesConstraints.size()) {
-                FeatureUtils.setAlternative(root);
-                relevantExcludesConstraints.forEach(constr -> this.model.removeConstraint(constr));
+                final FeatureMetaData metaData = this.featureMetaDataMap.get(root.getFeatureName());
+                metaData.setParentGroupType(Group.GroupType.ALTERNATIVE);
+                this.featureMetaDataMap.put(root.getFeatureName(), metaData);
+                relevantExcludesConstraints.forEach(constraints::remove);
             }
         }
     }

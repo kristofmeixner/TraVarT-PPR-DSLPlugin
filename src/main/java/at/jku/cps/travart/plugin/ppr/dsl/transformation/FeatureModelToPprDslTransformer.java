@@ -1,7 +1,6 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
 import at.jku.cps.travart.core.common.IConfigurable;
-import at.jku.cps.travart.core.common.Prop4JUtils;
 import at.jku.cps.travart.core.common.TraVarTUtils;
 import at.jku.cps.travart.core.common.UVLUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
@@ -20,7 +19,10 @@ import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 import de.vill.model.Group;
-import org.prop4j.Node;
+import de.vill.model.constraint.AndConstraint;
+import de.vill.model.constraint.ImplicationConstraint;
+import de.vill.model.constraint.NotConstraint;
+import de.vill.model.constraint.OrConstraint;
 
 import java.util.HashSet;
 import java.util.List;
@@ -234,31 +236,35 @@ public class FeatureModelToPprDslTransformer {
     private void convertConstraints(final List<de.vill.model.constraint.Constraint> constraints) throws NotSupportedConstraintType {
         long constrNumber = 0;
         for (final de.vill.model.constraint.Constraint constraint : constraints) {
-            final Node node = constraint.getNode().toCNF();
-            if (Prop4JUtils.isRequires(node) || Prop4JUtils.isExcludes(node)) {
-                final Product left = PprDslUtils.getProduct(this.asq,
-                        Prop4JUtils.getLiteralName(Prop4JUtils.getLeftLiteral(node)));
-                final Product right = PprDslUtils.getProduct(this.asq,
-                        Prop4JUtils.getLiteralName(Prop4JUtils.getRightLiteral(node)));
+            if (UVLUtils.isRequires(constraint) || UVLUtils.isExcludes(constraint)) {
+                final Product left = PprDslUtils.getProduct(
+                        this.asq,
+                        constraint.getConstraintSubParts().get(0).toString()
+                );
+                final Product right = PprDslUtils.getProduct(
+                        this.asq,
+                        constraint.getConstraintSubParts().get(1).toString()
+                );
                 if (left != null && right != null && !left.getRequires().contains(right)) {
-                    if (Prop4JUtils.isRequires(node)) {
+                    if (UVLUtils.isRequires(constraint)) {
                         left.getRequires().add(right);
                     } else {
                         left.getExcludes().add(right);
                     }
                 }
             } else {
-                final List<Product> products = constraint.getContainedFeatures().stream()
-                        .map(f -> PprDslUtils.getProduct(this.asq, FeatureUtils.getName(f)))
+                final List<Product> products = constraint.getConstraintSubParts()
+                        .stream()
+                        .map(f -> PprDslUtils.getProduct(this.asq, f.toString()))
                         .collect(Collectors.toList());
-                final String defintion = this.toConstraintDefintion(products, constraint.getNode());
+                final String defintion = this.toConstraintDefintion(products, constraint);
                 final Constraint pprConstraint = new Constraint(String.format("Constraint%s", ++constrNumber), defintion);
                 this.asq.getGlobalConstraints().add(pprConstraint);
             }
         }
     }
 
-    private String toConstraintDefintion(final List<Product> products, final Node node)
+    private String toConstraintDefintion(final List<Product> products, final de.vill.model.constraint.Constraint constraint)
             throws NotSupportedConstraintType {
         final StringBuffer buffer = new StringBuffer();
         for (final Product product : products) {
@@ -269,47 +275,50 @@ public class FeatureModelToPprDslTransformer {
         buffer.append(" ");
         buffer.append(ConstraintDefinitionParser.DEFINITION_ARROW);
         buffer.append(" ");
-        this.toNodeString(buffer, node);
+        this.toNodeString(buffer, constraint);
         return buffer.toString();
     }
 
-    private void toNodeString(final StringBuffer buffer, final Node node) throws NotSupportedConstraintType {
-        if (node.getMaxDepth() == 1) {
-            buffer.append(node.toString());
-        } else if (Prop4JUtils.isImplies(node) || Prop4JUtils.isAnd(node) || Prop4JUtils.isOr(node)) {
-            this.toNodeString(buffer, Prop4JUtils.getLeftNode(node));
-            if (Prop4JUtils.isImplies(node)) {
+    private void toNodeString(final StringBuffer buffer, final de.vill.model.constraint.Constraint constraint) throws NotSupportedConstraintType {
+        // todo: check max depth function
+        if (UVLUtils.getMaxDepth(constraint) == 1) {
+            buffer.append(constraint);
+        } else if (constraint instanceof ImplicationConstraint || constraint instanceof AndConstraint || constraint instanceof OrConstraint) {
+            this.toNodeString(buffer, constraint.getConstraintSubParts().get(0));
+            if (constraint instanceof ImplicationConstraint) {
                 buffer.append(" ");
                 buffer.append(ConstraintDefinitionParser.IMPLIES);
                 buffer.append(" ");
-            } else if (Prop4JUtils.isAnd(node)) {
+            } else if (constraint instanceof AndConstraint) {
                 buffer.append(" ");
                 buffer.append(ConstraintDefinitionParser.AND);
                 buffer.append(" ");
-            } else if (Prop4JUtils.isOr(node)) {
+            } else { //OrConstraint
                 buffer.append(" ");
                 buffer.append(ConstraintDefinitionParser.OR);
                 buffer.append(" ");
             }
-            this.toNodeString(buffer, Prop4JUtils.getRightNode(node));
-        } else if (Prop4JUtils.isNot(node)) {
+            // TODO:
+            this.toNodeString(buffer, UVLUtils.getRightConstraint(constraint));
+        } else if (constraint instanceof NotConstraint) {
             buffer.append(" ");
             buffer.append(ConstraintDefinitionParser.NOT);
             buffer.append(" ");
-            this.toNodeString(buffer, Prop4JUtils.getLeftNode(node));
+            this.toNodeString(buffer, constraint.getConstraintSubParts().get(0));
         } else {
-            throw new NotSupportedConstraintType(node.getClass().toString());
+            throw new NotSupportedConstraintType(constraint.getClass().toString());
         }
     }
 
     private void deriveProductsFromSamples(final FeatureModel fm) throws NotSupportedVariabilityTypeException {
         final FeatureModelSampler sampler = new FeatureModelSampler();
         if (this.samples == null) {
-            this.samples = sampler.sampleValidConfigurations(fm);
+            // TODO: this is supposed to be FeatureIDE Feature Model
+//            this.samples = sampler.sampleValidConfigurations(fm);
         }
         if (!this.samples.isEmpty()) {
             // create abstract base product for samples
-            final String baseProductNameId = FeatureUtils.getName(FeatureUtils.getRoot(fm)).concat("_products");
+            final String baseProductNameId = fm.getRootFeature().getFeatureName().concat("_products");
             final Product baseProduct = new Product(baseProductNameId, baseProductNameId);
             baseProduct.setAbstract(true);
             // union set of keys is the super type requires field

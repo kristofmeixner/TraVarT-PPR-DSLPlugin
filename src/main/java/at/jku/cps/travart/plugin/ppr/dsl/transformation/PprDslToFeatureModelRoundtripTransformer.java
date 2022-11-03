@@ -1,20 +1,25 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
+import at.jku.cps.travart.core.common.FeatureMetaData;
 import at.jku.cps.travart.core.common.TraVarTUtils;
+import at.jku.cps.travart.core.common.UVLUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
+import at.jku.cps.travart.core.helpers.FeatureModelGeneratorHelper;
 import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.product.Product;
-import de.ovgu.featureide.fm.core.ExtensionManager.NoSuchExtensionException;
-import de.ovgu.featureide.fm.core.base.FeatureUtils;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
+import de.vill.model.Group;
 import de.vill.model.constraint.ImplicationConstraint;
 import de.vill.model.constraint.LiteralConstraint;
 import de.vill.model.constraint.NotConstraint;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DESCRIPTION_KEY_PRAEFIX;
@@ -32,19 +37,27 @@ public class PprDslToFeatureModelRoundtripTransformer {
 
     //    private IFeatureModelFactory factory;
     private FeatureModel model;
+    private final Map<String, FeatureMetaData> featureMetaDataMap = new HashMap<>();
+    private final List<de.vill.model.constraint.Constraint> constraints = new ArrayList<>();
 
     public FeatureModel transform(final AssemblySequence asq, final String modelName)
             throws NotSupportedVariabilityTypeException {
-        try {
-            this.model = new FeatureModel();
-            this.transformProducts(asq);
-            this.deriveFeatureTree(asq);
-            this.transformConstraints(asq);
-            TraVarTUtils.deriveFeatureModelRoot(this.model, modelName, true);
-            return this.model;
-        } catch (final NoSuchExtensionException e) {
-            throw new NotSupportedVariabilityTypeException(e);
-        }
+        this.model = new FeatureModel();
+        this.transformProducts(asq);
+        this.deriveFeatureTree(asq);
+        this.transformConstraints(asq);
+        final String rootName = UVLUtils.deriveFeatureModelRoot(this.featureMetaDataMap, modelName);
+        FeatureModelGeneratorHelper.generateModel(
+                this.model,
+                rootName,
+                this.featureMetaDataMap,
+                this.constraints,
+                FeatureModelGeneratorHelper.createParentChildRelationship(
+                        this.featureMetaDataMap
+                )
+        );
+        //TraVarTUtils.deriveFeatureModelRoot(this.model, modelName, true);
+        return this.model;
     }
 
     private void transformProducts(final AssemblySequence asq) {
@@ -61,7 +74,14 @@ public class PprDslToFeatureModelRoundtripTransformer {
             for (final NamedObject attribute : product.getAttributes().values()) {
                 this.storeCustomAttributesAsProperty(feature, attribute);
             }
-            FeatureUtils.addFeature(this.model, feature);
+//            FeatureUtils.addFeature(this.model, feature);
+            this.featureMetaDataMap.put(feature.getFeatureName(), new FeatureMetaData(
+                    Boolean.FALSE,
+                    null,
+                    Group.GroupType.OPTIONAL,
+                    feature,
+                    new HashMap<>()
+            ));
         }
     }
 
@@ -70,16 +90,19 @@ public class PprDslToFeatureModelRoundtripTransformer {
             final Feature feature = this.model.getFeatureMap().get(product.getId());
             if (!product.getImplementedProducts().isEmpty() && product.getImplementedProducts().size() == 1) {
                 final Product parentProduct = product.getImplementedProducts().get(0);
-                final Feature parentFeature = this.model.getFeatureMap().get(parentProduct.getId());
-                FeatureUtils.addChild(parentFeature, feature);
+                final Feature parentFeature = this.featureMetaDataMap.get(parentProduct.getId()).getFeature();
+                final FeatureMetaData featureMetaData = this.featureMetaDataMap.get(feature.getFeatureName());
+                featureMetaData.setHasParent(Boolean.TRUE);
+                featureMetaData.setParentName(parentFeature.getFeatureName());
+                this.featureMetaDataMap.put(feature.getFeatureName(), featureMetaData);
             } else {
                 // no tree can be derived, but constraints for each of the implemented products
                 // (Product requires implemented products)
                 for (final Product implemented : product.getImplementedProducts()) {
-                    final Feature impFeature = this.model.getFeatureMap().get(implemented.getId());
+                    final Feature impFeature = this.featureMetaDataMap.get(implemented.getId()).getFeature();
                     assert impFeature != null;
                     if (!TraVarTUtils.isParentFeatureOf(feature, impFeature)) {
-                        this.model.getConstraints().add(
+                        this.constraints.add(
                                 new ImplicationConstraint(
                                         new LiteralConstraint((feature.getFeatureName())),
                                         new LiteralConstraint(impFeature.getFeatureName())
@@ -100,10 +123,10 @@ public class PprDslToFeatureModelRoundtripTransformer {
             assert child != null;
             // requires constraints
             for (final Product required : product.getRequires()) {
-                final Feature parent = this.model.getFeatureMap().get(required.getId());
+                final Feature parent = this.featureMetaDataMap.get(required.getId()).getFeature();
                 assert parent != null;
                 if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                    this.model.getConstraints().add(
+                    this.constraints.add(
                             new ImplicationConstraint(
                                     new LiteralConstraint((child.getFeatureName())),
                                     new LiteralConstraint(parent.getFeatureName())
@@ -113,10 +136,10 @@ public class PprDslToFeatureModelRoundtripTransformer {
             }
             // excludes constraints
             for (final Product excluded : product.getExcludes()) {
-                final Feature parent = this.model.getFeatureMap().get(excluded.getId());
+                final Feature parent = this.featureMetaDataMap.get(excluded.getId()).getFeature();
                 assert parent != null;
                 if (!TraVarTUtils.isParentFeatureOf(child, parent)) {
-                    this.model.getConstraints().add(
+                    this.constraints.add(
                             new ImplicationConstraint(
                                     new LiteralConstraint((child.getFeatureName())),
                                     new NotConstraint(new LiteralConstraint(parent.getFeatureName()))
