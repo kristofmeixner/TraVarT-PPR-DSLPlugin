@@ -1,6 +1,6 @@
 package at.jku.cps.travart.plugin.ppr.dsl.parser;
 
-import at.jku.cps.travart.core.common.TraVarTUtils;
+import at.jku.cps.travart.core.helpers.TraVarTUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.exception.ParserException;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
