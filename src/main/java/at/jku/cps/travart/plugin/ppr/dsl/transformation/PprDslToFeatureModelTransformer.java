@@ -1,10 +1,10 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 
 import at.jku.cps.travart.core.common.FeatureMetaData;
-import at.jku.cps.travart.core.common.TraVarTUtils;
-import at.jku.cps.travart.core.common.UVLUtils;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.FeatureModelGeneratorHelper;
+import at.jku.cps.travart.core.helpers.TraVarTUtils;
+import at.jku.cps.travart.core.helpers.UVLUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.parser.ConstraintDefinitionParser;
 import at.sqi.ppr.model.AssemblySequence;
