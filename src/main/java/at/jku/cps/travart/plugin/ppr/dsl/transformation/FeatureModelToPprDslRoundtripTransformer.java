@@ -11,9 +11,9 @@ import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 import de.vill.model.constraint.Constraint;
 import de.vill.model.constraint.LiteralConstraint;
+import org.logicng.formulas.FormulaFactory;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.ATTRIBUTE_DEFAULT_VALUE_KEY_PRAEFIX;
@@ -29,11 +29,9 @@ import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTran
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.NAME_ATTRIBUTE_KEY;
 
 public class FeatureModelToPprDslRoundtripTransformer {
-
     private AssemblySequence asq;
 
-    public AssemblySequence transform(final FeatureModel model)
-            throws NotSupportedVariabilityTypeException {
+    public AssemblySequence transform(final FeatureModel model) throws NotSupportedVariabilityTypeException {
         this.asq = new AssemblySequence();
         this.convertFeature(model.getRootFeature());
         this.restoreAttributes(model.getRootFeature());
@@ -167,13 +165,15 @@ public class FeatureModelToPprDslRoundtripTransformer {
         // different groups.
         // A requires B <=> CNF: Not(A) or B
         // A excludes B <=> CNF: Not(A) or Not(B)
-
-        if (TraVarTUtils.isComplexConstraint(constraint)) {
-            for (final Constraint child : constraint.getConstraintSubParts()) {
+        final de.vill.model.constraint.Constraint cnf = TraVarTUtils.buildConstraintFromFormula(
+                TraVarTUtils.buildFormulaFromConstraint(constraint, new FormulaFactory()).cnf()
+        );
+        if (TraVarTUtils.isComplexConstraint(cnf)) {
+            for (final Constraint child : cnf.getConstraintSubParts()) {
                 this.convertConstraintNodeRec(child);
             }
         } else {
-            this.convertConstraintNode(constraint);
+            this.convertConstraintNode(cnf);
         }
     }
 
@@ -215,7 +215,6 @@ public class FeatureModelToPprDslRoundtripTransformer {
     }
 
     private boolean isEnumSubFeature(final Feature feature) {
-        final Optional<Feature> parent = TraVarTUtils.getParent(feature, feature, null);
-        return parent.isPresent() && TraVarTUtils.isEnumerationType(parent.get());
+        return feature.getParentFeature() != null && TraVarTUtils.isEnumerationType(feature.getParentFeature());
     }
 }

@@ -19,13 +19,14 @@ import de.vill.model.FeatureModel;
 import de.vill.model.Group;
 import de.vill.model.constraint.AndConstraint;
 import de.vill.model.constraint.ImplicationConstraint;
+import de.vill.model.constraint.LiteralConstraint;
 import de.vill.model.constraint.NotConstraint;
 import de.vill.model.constraint.OrConstraint;
+import org.logicng.formulas.FormulaFactory;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -176,18 +177,18 @@ public class FeatureModelToPprDslTransformer {
 
     private void restoreAttributesFromFeatureTree(final Feature feature) {
         // if parent feature is a product, it is an implements relation
-        final Optional<Feature> parentFeature = TraVarTUtils.getParent(feature, feature, null);
-        if (parentFeature.isPresent() && TraVarTUtils.isAbstract(parentFeature.get())) {
-            final Product parentProduct = PprDslUtils.getProduct(this.asq, parentFeature.get().getFeatureName());
+        if (feature.getParentFeature() != null && TraVarTUtils.isAbstract(feature.getParentFeature())) {
+            final Product parentProduct = PprDslUtils.getProduct(this.asq, feature.getParentFeature().getFeatureName());
             final Product childProduct = PprDslUtils.getProduct(this.asq, feature.getFeatureName());
             if (!childProduct.getImplementedProducts().contains(parentProduct)) {
                 childProduct.getImplementedProducts().add(parentProduct);
             }
         }
+        final List<Feature> children = TraVarTUtils.getChildren(feature);
         // if it is an alternative group the excludes constraints have to be derived
         if (TraVarTUtils.checkGroupType(feature, Group.GroupType.ALTERNATIVE)) {
-            for (final Feature childFeature : TraVarTUtils.getChildren(feature)) {
-                final Set<Feature> remChildren = Functional.toSet(TraVarTUtils.getChildren(feature));
+            for (final Feature childFeature : children) {
+                final Set<Feature> remChildren = Functional.toSet(children);
                 remChildren.remove(childFeature);
                 final Product childProduct = PprDslUtils.getProduct(this.asq, childFeature.getFeatureName());
                 for (final Feature other : remChildren) {
@@ -197,7 +198,7 @@ public class FeatureModelToPprDslTransformer {
             }
         }
 
-        for (final Feature child : TraVarTUtils.getChildren(feature)) {
+        for (final Feature child : children) {
             this.restoreAttributesFromFeatureTree(child);
         }
     }
@@ -234,23 +235,27 @@ public class FeatureModelToPprDslTransformer {
     private void convertConstraints(final List<de.vill.model.constraint.Constraint> constraints) throws NotSupportedConstraintType {
         long constrNumber = 0;
         for (final de.vill.model.constraint.Constraint constraint : constraints) {
-            if (TraVarTUtils.isRequires(constraint) || TraVarTUtils.isExcludes(constraint)) {
+            final de.vill.model.constraint.Constraint cnf = TraVarTUtils.buildConstraintFromFormula(
+                    TraVarTUtils.buildFormulaFromConstraint(constraint, new FormulaFactory()).cnf()
+            );
+            if (TraVarTUtils.isRequires(cnf) || TraVarTUtils.isExcludes(cnf)) {
                 final Product left = PprDslUtils.getProduct(
                         this.asq,
-                        constraint.getConstraintSubParts().get(0).toString()
+                        ((LiteralConstraint) TraVarTUtils.getLeftConstraint(cnf)).getLiteral()
                 );
                 final Product right = PprDslUtils.getProduct(
                         this.asq,
-                        constraint.getConstraintSubParts().get(1).toString()
+                        ((LiteralConstraint) TraVarTUtils.getRightConstraint(cnf)).getLiteral()
                 );
                 if (left != null && right != null && !left.getRequires().contains(right)) {
-                    if (TraVarTUtils.isRequires(constraint)) {
+                    if (TraVarTUtils.isRequires(cnf)) {
                         left.getRequires().add(right);
                     } else {
                         left.getExcludes().add(right);
                     }
                 }
             } else {
+                // TODO: check
                 final List<Product> products = constraint.getConstraintSubParts()
                         .stream()
                         .map(f -> PprDslUtils.getProduct(this.asq, f.toString()))
