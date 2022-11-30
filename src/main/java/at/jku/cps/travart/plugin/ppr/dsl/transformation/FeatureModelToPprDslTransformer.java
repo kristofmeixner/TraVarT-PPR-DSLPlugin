@@ -3,7 +3,6 @@ package at.jku.cps.travart.plugin.ppr.dsl.transformation;
 import at.jku.cps.travart.core.common.IConfigurable;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
-import at.jku.cps.travart.core.sampling.FeatureModelSampler;
 import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.exception.NotSupportedConstraintType;
 import at.jku.cps.travart.plugin.ppr.dsl.parser.ConstraintDefinitionParser;
@@ -314,7 +313,6 @@ public class FeatureModelToPprDslTransformer {
     }
 
     private void deriveProductsFromSamples(final FeatureModel fm) throws NotSupportedVariabilityTypeException {
-        final FeatureModelSampler sampler = new FeatureModelSampler();
         if (this.samples == null) {
             // TODO: this is supposed to be FeatureIDE Feature Model
 //            this.samples = sampler.sampleValidConfigurations(fm);
