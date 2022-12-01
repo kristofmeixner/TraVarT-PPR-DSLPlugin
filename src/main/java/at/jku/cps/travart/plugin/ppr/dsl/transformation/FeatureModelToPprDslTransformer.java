@@ -11,7 +11,6 @@ import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.constraint.Constraint;
 import at.sqi.ppr.model.product.Product;
-import de.ovgu.featureide.fm.core.functional.Functional;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
@@ -187,7 +186,7 @@ public class FeatureModelToPprDslTransformer {
         // if it is an alternative group the excludes constraints have to be derived
         if (TraVarTUtils.checkGroupType(feature, Group.GroupType.ALTERNATIVE)) {
             for (final Feature childFeature : children) {
-                final Set<Feature> remChildren = Functional.toSet(children);
+                final Set<Feature> remChildren = new HashSet<>(children);
                 remChildren.remove(childFeature);
                 final Product childProduct = PprDslUtils.getProduct(this.asq, childFeature.getFeatureName());
                 for (final Feature other : remChildren) {

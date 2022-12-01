@@ -9,7 +9,6 @@ import at.sqi.ppr.model.NamedObject;
 import at.sqi.ppr.model.constraint.Constraint;
 import at.sqi.ppr.model.product.Product;
 import at.sqi.ppr.model.vdi.product.IProduct;
-import de.ovgu.featureide.fm.core.functional.Functional;
 import de.vill.model.Attribute;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
@@ -349,7 +348,7 @@ public class PprDslToFeatureModelTransformer {
             final Set<de.vill.model.constraint.Constraint> relevantExcludesConstraints = new HashSet<>();
             for (final Feature childFeature : children) {
                 this.transformConstraintsToAlternativeGroup(childFeature);
-                final Set<Feature> otherChildren = Functional.toSet(children);
+                final Set<Feature> otherChildren = new HashSet<>(children);
                 otherChildren.remove(childFeature);
                 for (final de.vill.model.constraint.Constraint constr : constraints) {
                     if (TraVarTUtils.isExcludes(constr)
