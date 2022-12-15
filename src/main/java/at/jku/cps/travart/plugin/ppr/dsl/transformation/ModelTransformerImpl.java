@@ -7,15 +7,17 @@ import de.vill.model.FeatureModel;
 
 public class ModelTransformerImpl implements IModelTransformer<AssemblySequence> {
 
-    @Override
-    public FeatureModel transform(final AssemblySequence assemblySequence, final String name) throws NotSupportedVariabilityTypeException {
-        final PprDslToFeatureModelTransformer pprDslToFeatureModelTransformer = new PprDslToFeatureModelTransformer();
-        return pprDslToFeatureModelTransformer.transform(assemblySequence, name);
-    }
+	@Override
+	public FeatureModel transform(final AssemblySequence assemblySequence, final String name,
+			final OPTIMIZING_LEVEL level) throws NotSupportedVariabilityTypeException {
+		final PprDslToFeatureModelTransformer pprDslToFeatureModelTransformer = new PprDslToFeatureModelTransformer();
+		return pprDslToFeatureModelTransformer.transform(assemblySequence, name, level);
+	}
 
-    @Override
-    public AssemblySequence transform(final FeatureModel featureModel, final String name) throws NotSupportedVariabilityTypeException {
-        final FeatureModelToPprDslTransformer featureModelToPprDslTransformer = new FeatureModelToPprDslTransformer();
-        return featureModelToPprDslTransformer.transform(featureModel);
-    }
+	@Override
+	public AssemblySequence transform(final FeatureModel featureModel, final String modelName,
+			final OPTIMIZING_LEVEL level) throws NotSupportedVariabilityTypeException {
+		final FeatureModelToPprDslTransformer featureModelToPprDslTransformer = new FeatureModelToPprDslTransformer();
+		return featureModelToPprDslTransformer.transform(featureModel, level);
+	}
 }

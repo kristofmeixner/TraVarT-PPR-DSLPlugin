@@ -13,6 +13,9 @@ import java.util.List;
 
 @Extension
 public class PPRDSLIPluginImpl implements IPlugin {
+	
+	public static final String ID = "ppr-dsl-plugin";
+	
     @Override
     public IModelTransformer getTransformer() {
         return new ModelTransformerImpl();
@@ -40,7 +43,7 @@ public class PPRDSLIPluginImpl implements IPlugin {
 
     @Override
     public String getId() {
-        return "ppr-dsl-plugin";
+        return ID;
     }
 
     @Override

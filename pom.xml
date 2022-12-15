@@ -43,28 +43,24 @@
             <artifactId>uvl-parser</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        <!--PPR DSL-->
         <dependency>
-            <groupId>at.sqi.ppr</groupId>
-            <artifactId>ppr.model</artifactId>
-            <version>0.0.3</version>
-        </dependency>
-        <dependency>
-            <groupId>at.sqi.ppr</groupId>
-            <artifactId>ppr.dsl</artifactId>
-            <version>0.0.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.netbeans.external</groupId>
-            <artifactId>org-apache-commons-io</artifactId>
-            <version>RELEASE113</version>
-            <scope>test</scope>
-        </dependency>
-        <!--TODO: Check if we can work without this-->
-        <!--        <dependency>-->
-        <!--            <groupId>at.jku.cps.travart</groupId>-->
-        <!--            <artifactId>travart.dopler-decision</artifactId>-->
-        <!--            <version>0.0.1</version>-->
-        <!--        </dependency>-->
+    		<groupId>at.sqi.ppr</groupId>
+    		<artifactId>ppr-dsl</artifactId>
+    		<version>1.0.0</version>
+		</dependency>
+        <!-- junit -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.9.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
+			<version>5.9.1</version>
+			<scope>test</scope>
+		</dependency>
     </dependencies>
     <build>
         <plugins>
@@ -123,4 +119,18 @@
             </plugin>
         </plugins>
     </build>
+    <repositories>
+    <!-- 
+    	<repository>
+        	<id>central</id>
+        	<name>Maven Central</name>
+        	<url>https://repo1.maven.org/maven2/</url>
+    	</repository>
+    -->
+        <repository>
+        	<id>cdl-sqi</id>
+        	<name>CLD-SQI Artifactory-releases</name>
+        	<url>http://cdl-sqi.ifs.tuwien.ac.at/artifactory/libs-release</url>
+    	</repository>
+    </repositories>
 </project>
