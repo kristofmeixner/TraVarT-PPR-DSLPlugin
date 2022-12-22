@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 import org.logicng.formulas.FormulaFactory;
 
 import at.jku.cps.travart.core.common.IConfigurable;
-import at.jku.cps.travart.core.common.IModelTransformer.OPTIMIZING_LEVEL;
 import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.common.PprDslUtils;
@@ -56,8 +55,7 @@ public class FeatureModelToPprDslTransformer {
 //        return this.transform(model);
 //    }
 
-	public AssemblySequence transform(final FeatureModel model, final OPTIMIZING_LEVEL level)
-			throws NotSupportedVariabilityTypeException {
+	public AssemblySequence transform(final FeatureModel model) throws NotSupportedVariabilityTypeException {
 		try {
 			asq = new AssemblySequence();
 			convertFeature(model.getRootFeature());
@@ -115,6 +113,7 @@ public class FeatureModelToPprDslTransformer {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	private String restoreNameFromProperties(final Feature feature, final Product product) {
 		final Attribute nameAttribute = feature.getAttributes().get(NAME_ATTRIBUTE_KEY);
 		if (nameAttribute == null) {
@@ -268,45 +267,44 @@ public class FeatureModelToPprDslTransformer {
 
 	private String toConstraintDefintion(final List<Product> products,
 			final de.vill.model.constraint.Constraint constraint) throws NotSupportedConstraintType {
-		final StringBuffer buffer = new StringBuffer();
+		final StringBuilder builder = new StringBuilder();
 		for (final Product product : products) {
-			buffer.append(product.getId());
-			buffer.append(ConstraintDefinitionParser.DELIMITER);
+			builder.append(product.getId());
+			builder.append(ConstraintDefinitionParser.DELIMITER);
 		}
-		buffer.deleteCharAt(buffer.lastIndexOf(ConstraintDefinitionParser.DELIMITER));
-		buffer.append(" ");
-		buffer.append(ConstraintDefinitionParser.DEFINITION_ARROW);
-		buffer.append(" ");
-		toNodeString(buffer, constraint);
-		return buffer.toString();
+		builder.deleteCharAt(builder.lastIndexOf(ConstraintDefinitionParser.DELIMITER));
+		builder.append(" ");
+		builder.append(ConstraintDefinitionParser.DEFINITION_ARROW);
+		builder.append(" ");
+		toNodeString(builder, constraint);
+		return builder.toString();
 	}
 
-	private void toNodeString(final StringBuffer buffer, final de.vill.model.constraint.Constraint constraint)
+	private void toNodeString(final StringBuilder builder, final de.vill.model.constraint.Constraint constraint)
 			throws NotSupportedConstraintType {
 		// todo: check max depth function
 		if (TraVarTUtils.getMaxDepth(constraint) == 1) {
-			buffer.append(constraint);
+			builder.append(constraint);
 		} else if (constraint instanceof ImplicationConstraint || constraint instanceof AndConstraint
 				|| constraint instanceof OrConstraint) {
-			toNodeString(buffer, constraint.getConstraintSubParts().get(0));
+			toNodeString(builder, constraint.getConstraintSubParts().get(0));
 			if (constraint instanceof ImplicationConstraint) {
-				buffer.append(" ");
-				buffer.append(ConstraintDefinitionParser.IMPLIES);
+				builder.append(" ");
+				builder.append(ConstraintDefinitionParser.IMPLIES);
 			} else if (constraint instanceof AndConstraint) {
-				buffer.append(" ");
-				buffer.append(ConstraintDefinitionParser.AND);
+				builder.append(" ");
+				builder.append(ConstraintDefinitionParser.AND);
 			} else { // OrConstraint
-				buffer.append(" ");
-				buffer.append(ConstraintDefinitionParser.OR);
+				builder.append(" ");
+				builder.append(ConstraintDefinitionParser.OR);
 			}
-			buffer.append(" ");
-			// TODO:
-			toNodeString(buffer, TraVarTUtils.getRightConstraint(constraint));
+			builder.append(" ");
+			toNodeString(builder, TraVarTUtils.getRightConstraint(constraint));
 		} else if (constraint instanceof NotConstraint) {
-			buffer.append(" ");
-			buffer.append(ConstraintDefinitionParser.NOT);
-			buffer.append(" ");
-			toNodeString(buffer, constraint.getConstraintSubParts().get(0));
+			builder.append(" ");
+			builder.append(ConstraintDefinitionParser.NOT);
+			builder.append(" ");
+			toNodeString(builder, constraint.getConstraintSubParts().get(0));
 		} else {
 			throw new NotSupportedConstraintType(constraint.getClass().toString());
 		}

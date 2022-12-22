@@ -68,6 +68,7 @@ public class FeatureModelToPprDslRoundtripTransformer {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	private String restoreNameFromProperties(final Feature feature, final Product product) {
 		final Attribute nameAttribute = feature.getAttributes().get(NAME_ATTRIBUTE_KEY);
 		if (nameAttribute == null) {
