@@ -38,8 +38,9 @@ public class ProductTransformerUtil {
 
 	private static void transformProducts(final FeatureModel fm, final AssemblySequence asq) {
 		final Feature subroot = factory.createFeature(PRODUCT_ROOT);
-		TraVarTUtils.addFeature(fm, subroot);
+		TraVarTUtils.setAbstract(subroot, true);
 		TraVarTUtils.setGroup(fm, subroot, TraVarTUtils.getRoot(fm), Group.GroupType.MANDATORY);
+		TraVarTUtils.addFeature(fm, subroot);
 		for (final Product product : asq.getProducts().values()) {
 			if (PprDslUtils.isPartialProduct(product)) {
 				final Feature feature = factory.createFeature(product.getId());

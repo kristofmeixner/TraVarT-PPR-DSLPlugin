@@ -44,8 +44,9 @@ public class ProcessTransformerUtil {
 
 	private static void transformProcesses(final FeatureModel fm, final AssemblySequence asq) {
 		final Feature subroot = factory.createFeature(PROCESS_ROOT);
-		TraVarTUtils.addFeature(fm, subroot);
+		TraVarTUtils.setAbstract(subroot, true);
 		TraVarTUtils.setGroup(fm, subroot, TraVarTUtils.getRoot(fm), Group.GroupType.MANDATORY);
+		TraVarTUtils.addFeature(fm, subroot);
 		for (Process process : asq.getProcesses().values()) {
 			final Feature feature = factory.createFeature(process.getId());
 			if (process.isAbstract()) {
@@ -53,7 +54,8 @@ public class ProcessTransformerUtil {
 			}
 			deriveVisibilityConditions(feature, process, asq);
 			TraVarTUtils.addFeature(fm, feature);
-			TraVarTUtils.setGroup(fm, feature, subroot, Group.GroupType.OPTIONAL);
+			TraVarTUtils.setGroup(fm, feature, subroot,
+					process.isAbstract() ? Group.GroupType.MANDATORY : Group.GroupType.OPTIONAL);
 		}
 	}
 

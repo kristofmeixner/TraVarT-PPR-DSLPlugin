@@ -39,8 +39,9 @@ public class ResourceTransformerUtil {
 
 	private static void transformResources(final FeatureModel fm, final AssemblySequence asq) {
 		final Feature subroot = factory.createFeature(RESOURCE_ROOT);
-		TraVarTUtils.addFeature(fm, subroot);
+		TraVarTUtils.setAbstract(subroot, true);
 		TraVarTUtils.setGroup(fm, subroot, TraVarTUtils.getRoot(fm), Group.GroupType.MANDATORY);
+		TraVarTUtils.addFeature(fm, subroot);
 		for (final Resource resource : asq.getResources().values()) {
 			final Feature feature = factory.createFeature(resource.getId());
 			if (resource.isAbstract()) {

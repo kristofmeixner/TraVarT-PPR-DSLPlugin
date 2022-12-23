@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.exception.ParserException;
+import at.sqi.ppr.model.AssemblySequence;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 import de.vill.model.constraint.AndConstraint;
@@ -26,17 +27,18 @@ public class ConstraintDefinitionParser {
 	private String[] input;
 	private int index = 0;
 	private String symbol;
+	private final AssemblySequence asq;
 
-	public ConstraintDefinitionParser(final FeatureModel fm) {
+	public ConstraintDefinitionParser(final FeatureModel fm, final AssemblySequence asq) {
 		this.fm = Objects.requireNonNull(fm);
+		this.asq = Objects.requireNonNull(asq);
 	}
 
 	public de.vill.model.constraint.Constraint parse(final String str) throws ParserException {
-		Objects.requireNonNull(str);
 		index = 0;
-		input = TraVarTUtils.splitString(str, REGEX);
+		input = TraVarTUtils.splitString(Objects.requireNonNull(str), REGEX);
 		if (input.length > 0) {
-			TraVarTUtils.addGlobalConstraint(fm, parseConstraintNode());
+			return parseConstraintNode();
 		}
 		throw new ParserException("No action found in String " + str);
 	}
@@ -92,7 +94,18 @@ public class ConstraintDefinitionParser {
 			n = new NotConstraint(v);
 		} else {
 			final Feature feature = TraVarTUtils.getFeature(fm, symbol);
-			n = new LiteralConstraint(feature.getFeatureName());
+			if (feature == null) {
+				// at this point this may means that the product is non-abstract and could
+				// indicate mandatory features. Replace by root feature if the product is not
+				// abstract, otherwise by a null object
+				if (!asq.getProducts().get(symbol).isAbstract()) {
+					throw new ParserException(new NullPointerException(
+							String.format("feature with identifier %s is not found (null)", symbol)));
+				}
+				n = new LiteralConstraint(TraVarTUtils.getFeatureName(TraVarTUtils.getRoot(fm)));
+			} else {
+				n = new LiteralConstraint(TraVarTUtils.getFeatureName(feature));
+			}
 			nextSymbol();
 		}
 		return n;
