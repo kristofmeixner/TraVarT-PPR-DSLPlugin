@@ -133,6 +133,12 @@ public final class PprDslUtils {
 		return Objects.requireNonNull(resource).getAttributes().get(key).getValue().getValue();
 	}
 
+	public static boolean hasChildren(final Product product) {
+		return !product.getChildProducts().isEmpty();
+	}
+
+	// TODO: similar implementation for all three areas - generalize! Talk to
+	// Kristof regarding common interface
 	public static boolean implementsSingleProduct(final Product product) {
 		return !Objects.requireNonNull(product).getImplementedProducts().isEmpty()
 				&& product.getImplementedProducts().size() == 1;
@@ -143,15 +149,21 @@ public final class PprDslUtils {
 				&& resource.getImplementedResources().size() == 1;
 	}
 
-	public static boolean hasChildren(final Product product) {
-		return !product.getChildProducts().isEmpty();
+	public static boolean implementsSingleProcess(final Process process) {
+		return !Objects.requireNonNull(process).getImplementedProcesses().isEmpty()
+				&& process.getImplementedProcesses().size() == 1;
 	}
 
 	public static Product getFirstImplementedProduct(final Product product) {
-		return product.getImplementedProducts().get(0);
+		return Objects.requireNonNull(product).getImplementedProducts().get(0);
 	}
 
 	public static Resource getFirstImplementedResource(final Resource resource) {
-		return resource.getImplementedResources().get(0);
+		return Objects.requireNonNull(resource).getImplementedResources().get(0);
 	}
+
+	public static Process getFirstImplementedProcess(final Process process) {
+		return Objects.requireNonNull(process).getImplementedProcesses().get(0);
+	}
+
 }

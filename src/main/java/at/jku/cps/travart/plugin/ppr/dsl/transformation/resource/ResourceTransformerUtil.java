@@ -17,6 +17,8 @@ import de.vill.model.Group;
 
 public class ResourceTransformerUtil {
 
+	private static final String RESOURCE_ROOT = "resource";
+
 	private ResourceTransformerUtil() {
 
 	}
@@ -36,6 +38,9 @@ public class ResourceTransformerUtil {
 	}
 
 	private static void transformResources(final FeatureModel fm, final AssemblySequence asq) {
+		final Feature subroot = factory.createFeature(RESOURCE_ROOT);
+		TraVarTUtils.addFeature(fm, subroot);
+		TraVarTUtils.setGroup(fm, subroot, TraVarTUtils.getRoot(fm), Group.GroupType.MANDATORY);
 		for (final Resource resource : asq.getResources().values()) {
 			final Feature feature = factory.createFeature(resource.getId());
 			if (resource.isAbstract()) {
@@ -46,31 +51,56 @@ public class ResourceTransformerUtil {
 
 			}
 			TraVarTUtils.addFeature(fm, feature);
+			TraVarTUtils.setGroup(fm, feature, subroot,
+					resource.isAbstract() ? Group.GroupType.MANDATORY : Group.GroupType.OPTIONAL);
 		}
 	}
 
 	private static void deriveFeatureTree(final FeatureModel fm, final AssemblySequence asq) {
 		for (final Resource resoruce : asq.getResources().values()) {
-			if (resoruce.isAbstract()) {
-				final Feature feature = TraVarTUtils.getFeature(fm, resoruce.getId());
-				TraVarTUtils.setGroup(fm, feature, feature.getParentFeature(), Group.GroupType.MANDATORY);
-			}
 			if (PprDslUtils.implementsSingleResource(resoruce)) {
-				deriveFromImplementsAttribute(fm, resoruce);
+				final Feature childFeature = TraVarTUtils.getFeature(fm, resoruce.getId());
+				final Resource parentResoruce = PprDslUtils.getFirstImplementedResource(resoruce);
+				final Feature parentFeature = TraVarTUtils.getFeature(fm, parentResoruce.getId());
+				TraVarTUtils.setGroup(fm, childFeature, parentFeature, Group.GroupType.OPTIONAL);
 			}
-
 		}
 	}
 
-	private static void deriveFromImplementsAttribute(final FeatureModel fm, final Resource resoruce) {
-		final Feature childFeature = TraVarTUtils.getFeature(fm, resoruce.getId());
-		final Resource parentResoruce = PprDslUtils.getFirstImplementedResource(resoruce);
-		final Feature parentFeature = TraVarTUtils.getFeature(fm, parentResoruce.getId());
-		TraVarTUtils.setGroup(fm, childFeature, parentFeature, Group.GroupType.OPTIONAL);
+	// TODO: similar to product transformation - Generalize
+	private static void transformConstraints(final FeatureModel fm, final AssemblySequence asq) {
+		for (final Resource resource : asq.getResources().values()) {
+			// requires constraints
+			createRequiresConstraints(fm, resource);
+			// excludes constraints
+			createExcludeConstraints(fm, resource);
+		}
 	}
 
-	private static void transformConstraints(final FeatureModel fm, final AssemblySequence asq) {
-		// TODO Auto-generated method stub
+	private static void createRequiresConstraints(final FeatureModel fm, final Resource resource) {
+		final Feature conditionalFeature = TraVarTUtils.getFeature(fm, resource.getId());
+		for (final Resource required : resource.getRequires()) {
+			final Feature requiredFeature = TraVarTUtils.getFeature(fm, required.getId());
+			if (requiredFeature != null && !TraVarTUtils.isParentOf(conditionalFeature, requiredFeature)) {
+				TraVarTUtils.addOwnConstraint(fm,
+						factory.createImplicationConstraint(
+								factory.createLiteralConstraint(TraVarTUtils.getFeatureName(conditionalFeature)),
+								factory.createLiteralConstraint(TraVarTUtils.getFeatureName(requiredFeature))));
+			}
+		}
+	}
+
+	private static void createExcludeConstraints(final FeatureModel fm, final Resource resource) {
+		final Feature conditionalFeature = TraVarTUtils.getFeature(fm, resource.getId());
+		for (final Resource excluded : resource.getExcludes()) {
+			final Feature excludedFeature = TraVarTUtils.getFeature(fm, excluded.getId());
+			if (excludedFeature != null && !TraVarTUtils.isParentOf(conditionalFeature, excludedFeature)) {
+				TraVarTUtils.addOwnConstraint(fm, factory.createImplicationConstraint(
+						factory.createLiteralConstraint(TraVarTUtils.getFeatureName(conditionalFeature)),
+						factory.createNotConstraint(
+								factory.createLiteralConstraint(TraVarTUtils.getFeatureName(excludedFeature)))));
+			}
+		}
 
 	}
 }

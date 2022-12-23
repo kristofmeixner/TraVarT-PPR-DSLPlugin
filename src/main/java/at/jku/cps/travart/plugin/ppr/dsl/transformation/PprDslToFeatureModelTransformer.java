@@ -4,9 +4,12 @@ import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.factory.impl.CoreModelFactory;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
 import at.jku.cps.travart.plugin.ppr.dsl.parser.ConstraintDefinitionParser;
+import at.jku.cps.travart.plugin.ppr.dsl.transformation.process.ProcessTransformerUtil;
 import at.jku.cps.travart.plugin.ppr.dsl.transformation.product.ProductTransformerUtil;
+import at.jku.cps.travart.plugin.ppr.dsl.transformation.resource.ResourceTransformerUtil;
 import at.sqi.ppr.model.AssemblySequence;
 import at.sqi.ppr.model.constraint.Constraint;
+import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 
 public class PprDslToFeatureModelTransformer {
@@ -16,9 +19,12 @@ public class PprDslToFeatureModelTransformer {
 	public FeatureModel transform(final AssemblySequence asq, final String modelName)
 			throws NotSupportedVariabilityTypeException {
 		FeatureModel fm = factory.create();
+		final Feature root = factory.createFeature(modelName);
+		TraVarTUtils.addFeature(fm, root);
+		TraVarTUtils.setRoot(fm, root);
 		ProductTransformerUtil.createProductFeatureModel(factory, fm, asq);
-//		ResourceTransformerUtil.createResoruceFeatureModel(factory, fm, asq);
-//		ProcessTransformerUtil.createProcessFeatureModel(factory, fm, asq);
+		ResourceTransformerUtil.createResoruceFeatureModel(factory, fm, asq);
+		ProcessTransformerUtil.createProcessFeatureModel(factory, fm, asq);
 //		createGlobalConstraints(fm, asq);
 //		DefaultCoreModelOptimizer.getInstance().optimize(fm);
 		return fm;

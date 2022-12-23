@@ -37,16 +37,17 @@ public class ProductTransformerUtil {
 	}
 
 	private static void transformProducts(final FeatureModel fm, final AssemblySequence asq) {
-		final Feature parent = factory.createFeature(PRODUCT_ROOT);
-		TraVarTUtils.addFeature(fm, parent);
-		TraVarTUtils.setRoot(fm, parent);
+		final Feature subroot = factory.createFeature(PRODUCT_ROOT);
+		TraVarTUtils.addFeature(fm, subroot);
+		TraVarTUtils.setGroup(fm, subroot, TraVarTUtils.getRoot(fm), Group.GroupType.MANDATORY);
 		for (final Product product : asq.getProducts().values()) {
 			if (PprDslUtils.isPartialProduct(product)) {
 				final Feature feature = factory.createFeature(product.getId());
 				if (product.isAbstract()) {
 					TraVarTUtils.setAbstract(feature, true);
 				}
-				TraVarTUtils.setGroup(fm, feature, parent, Group.GroupType.OPTIONAL);
+				TraVarTUtils.addFeature(fm, feature);
+				TraVarTUtils.setGroup(fm, feature, subroot, Group.GroupType.OPTIONAL);
 			}
 		}
 	}
@@ -102,6 +103,7 @@ public class ProductTransformerUtil {
 		TraVarTUtils.addGroup(fm, childFeatures, feature, Group.GroupType.OPTIONAL);
 	}
 
+	// TODO: similar to resource transformation - Generalize
 	private static void transformConstraints(final FeatureModel fm, final AssemblySequence asq) {
 		for (final Product product : asq.getProducts().values()) {
 			if (PprDslUtils.isPartialProduct(product)) {
