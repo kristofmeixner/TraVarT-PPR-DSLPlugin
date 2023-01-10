@@ -1,5 +1,6 @@
 package at.jku.cps.travart.plugin.ppr.dsl;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.pf4j.Extension;
@@ -50,6 +51,6 @@ public class PPRDSLIPluginImpl implements IPlugin {
 
 	@Override
 	public List<String> getSupportedFileExtensions() {
-		return List.of(".dsl");
+		return Collections.unmodifiableList(List.of(".dsl"));
 	}
 }

@@ -19,7 +19,7 @@ public class PprDslOptimizer implements IModelOptimizer<AssemblySequence> {
 	}
 
 	@Override
-	public void optimize(final AssemblySequence model, final OPTIMIZING_LEVEL level) {
+	public void optimize(final AssemblySequence model, final STRATEGY level) {
 		// TODO Auto-generated method stub
 	}
 

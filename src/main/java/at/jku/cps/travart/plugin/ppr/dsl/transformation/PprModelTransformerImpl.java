@@ -9,9 +9,9 @@ public class PprModelTransformerImpl implements IModelTransformer<AssemblySequen
 
 	@Override
 	public FeatureModel transform(final AssemblySequence assemblySequence, final String name,
-			final TRANSFORMATION_LEVEL level) throws NotSupportedVariabilityTypeException {
+			final STRATEGY level) throws NotSupportedVariabilityTypeException {
 		try {
-			if (level == TRANSFORMATION_LEVEL.ROUNDTRIP) {
+			if (level == STRATEGY.ROUNDTRIP) {
 				final PprDslToFeatureModelRoundtripTransformer pprDslToFeatureModelRoundtripTransformer = new PprDslToFeatureModelRoundtripTransformer();
 				return pprDslToFeatureModelRoundtripTransformer.transform(assemblySequence, name);
 			}
@@ -25,9 +25,9 @@ public class PprModelTransformerImpl implements IModelTransformer<AssemblySequen
 
 	@Override
 	public AssemblySequence transform(final FeatureModel featureModel, final String name,
-			final TRANSFORMATION_LEVEL level) throws NotSupportedVariabilityTypeException {
+			final STRATEGY level) throws NotSupportedVariabilityTypeException {
 		try {
-			if (level == TRANSFORMATION_LEVEL.ROUNDTRIP) {
+			if (level == STRATEGY.ROUNDTRIP) {
 				final FeatureModelToPprDslRoundtripTransformer featureModelToPprDslRoundtripTransformer = new FeatureModelToPprDslRoundtripTransformer();
 				return featureModelToPprDslRoundtripTransformer.transform(featureModel);
 			}
