@@ -10,22 +10,31 @@ public class PprModelTransformerImpl implements IModelTransformer<AssemblySequen
 	@Override
 	public FeatureModel transform(final AssemblySequence assemblySequence, final String name,
 			final TRANSFORMATION_LEVEL level) throws NotSupportedVariabilityTypeException {
-		if (level == TRANSFORMATION_LEVEL.ROUNDTRIP) {
-			final PprDslToFeatureModelRoundtripTransformer pprDslToFeatureModelRoundtripTransformer = new PprDslToFeatureModelRoundtripTransformer();
-			return pprDslToFeatureModelRoundtripTransformer.transform(assemblySequence, name);
+		try {
+			if (level == TRANSFORMATION_LEVEL.ROUNDTRIP) {
+				final PprDslToFeatureModelRoundtripTransformer pprDslToFeatureModelRoundtripTransformer = new PprDslToFeatureModelRoundtripTransformer();
+				return pprDslToFeatureModelRoundtripTransformer.transform(assemblySequence, name);
+			}
+			final PprDslToFeatureModelTransformer pprDslToFeatureModelTransformer = new PprDslToFeatureModelTransformer();
+
+			return pprDslToFeatureModelTransformer.transform(assemblySequence, name);
+		} catch (NotSupportedVariabilityTypeException | ReflectiveOperationException e) {
+			throw new NotSupportedVariabilityTypeException(e);
 		}
-		final PprDslToFeatureModelTransformer pprDslToFeatureModelTransformer = new PprDslToFeatureModelTransformer();
-		return pprDslToFeatureModelTransformer.transform(assemblySequence, name);
 	}
 
 	@Override
-	public AssemblySequence transform(final FeatureModel featureModel, final String name, final TRANSFORMATION_LEVEL level)
-			throws NotSupportedVariabilityTypeException {
-		if (level == TRANSFORMATION_LEVEL.ROUNDTRIP) {
-			final FeatureModelToPprDslRoundtripTransformer featureModelToPprDslRoundtripTransformer = new FeatureModelToPprDslRoundtripTransformer();
-			return featureModelToPprDslRoundtripTransformer.transform(featureModel);
+	public AssemblySequence transform(final FeatureModel featureModel, final String name,
+			final TRANSFORMATION_LEVEL level) throws NotSupportedVariabilityTypeException {
+		try {
+			if (level == TRANSFORMATION_LEVEL.ROUNDTRIP) {
+				final FeatureModelToPprDslRoundtripTransformer featureModelToPprDslRoundtripTransformer = new FeatureModelToPprDslRoundtripTransformer();
+				return featureModelToPprDslRoundtripTransformer.transform(featureModel);
+			}
+			final FeatureModelToPprDslTransformer featureModelToPprDslTransformer = new FeatureModelToPprDslTransformer();
+			return featureModelToPprDslTransformer.transform(featureModel);
+		} catch (NotSupportedVariabilityTypeException | ReflectiveOperationException e) {
+			throw new NotSupportedVariabilityTypeException(e);
 		}
-		final FeatureModelToPprDslTransformer featureModelToPprDslTransformer = new FeatureModelToPprDslTransformer();
-		return featureModelToPprDslTransformer.transform(featureModel);
 	}
 }

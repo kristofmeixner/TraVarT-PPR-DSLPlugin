@@ -20,7 +20,7 @@ import de.vill.model.Group;
 public class ProcessTransformerUtil {
 
 	private static final String PROCESS_ROOT = "process";
-	private static final String VISIABLITY_CONDITION = "visibility";
+	private static final String VISIBILITY_CONDITION = "visibility";
 	private static final String IS_SELECTED_CALL = "isSelected(";
 	private static final String CLOSING_BRACKET = ")";
 	private static final String AND = "&&";
@@ -62,7 +62,7 @@ public class ProcessTransformerUtil {
 	private static void deriveVisibilityConditions(final Feature feature, final Process process,
 			final AssemblySequence asq) {
 		if (process.isAbstract()) {
-			TraVarTUtils.addAttribute(feature, VISIABLITY_CONDITION, false);
+			TraVarTUtils.addAttribute(feature, VISIBILITY_CONDITION, false);
 			return;
 		}
 		List<InputProductProcessRelation> inputRelations = asq.getInputRelationsOfProcess(process);
@@ -84,7 +84,7 @@ public class ProcessTransformerUtil {
 				condition = String.join("", condition, IS_SELECTED_CALL, visP.getId(), CLOSING_BRACKET);
 			}
 		}
-		TraVarTUtils.addAttribute(feature, VISIABLITY_CONDITION, condition);
+		TraVarTUtils.addAttribute(feature, VISIBILITY_CONDITION, condition);
 	}
 
 	private static void deriveFeatureTree(final FeatureModel fm, final AssemblySequence asq) {

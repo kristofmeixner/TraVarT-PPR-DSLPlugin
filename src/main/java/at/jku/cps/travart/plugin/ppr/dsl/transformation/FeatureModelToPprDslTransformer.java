@@ -55,7 +55,8 @@ public class FeatureModelToPprDslTransformer {
 //        return this.transform(model);
 //    }
 
-	public AssemblySequence transform(final FeatureModel model) throws NotSupportedVariabilityTypeException {
+	public AssemblySequence transform(final FeatureModel model)
+			throws NotSupportedVariabilityTypeException, ReflectiveOperationException {
 		try {
 			asq = new AssemblySequence();
 			convertFeature(model.getRootFeature());
@@ -236,7 +237,7 @@ public class FeatureModelToPprDslTransformer {
 	}
 
 	private void convertConstraints(final List<de.vill.model.constraint.Constraint> constraints)
-			throws NotSupportedConstraintType {
+			throws NotSupportedConstraintType, ReflectiveOperationException {
 		long constrNumber = 0;
 		for (final de.vill.model.constraint.Constraint constraint : constraints) {
 			final de.vill.model.constraint.Constraint cnf = TraVarTUtils.buildConstraintFromFormula(
@@ -266,7 +267,8 @@ public class FeatureModelToPprDslTransformer {
 	}
 
 	private String toConstraintDefintion(final List<Product> products,
-			final de.vill.model.constraint.Constraint constraint) throws NotSupportedConstraintType {
+			final de.vill.model.constraint.Constraint constraint)
+			throws NotSupportedConstraintType, ReflectiveOperationException {
 		final StringBuilder builder = new StringBuilder();
 		for (final Product product : products) {
 			builder.append(product.getId());
@@ -281,7 +283,7 @@ public class FeatureModelToPprDslTransformer {
 	}
 
 	private void toNodeString(final StringBuilder builder, final de.vill.model.constraint.Constraint constraint)
-			throws NotSupportedConstraintType {
+			throws NotSupportedConstraintType, ReflectiveOperationException {
 		// todo: check max depth function
 		if (TraVarTUtils.getMaxDepth(constraint) == 1) {
 			builder.append(constraint);

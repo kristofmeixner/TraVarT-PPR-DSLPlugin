@@ -23,12 +23,13 @@ public class PprDslToFeatureModelTransformer {
 	private static final CoreModelFactory factory = CoreModelFactory.getInstance();
 
 	public FeatureModel transform(final AssemblySequence asq, final String modelName)
-			throws NotSupportedVariabilityTypeException {
+			throws NotSupportedVariabilityTypeException, ReflectiveOperationException {
 		FeatureModel fm = factory.create();
 		final Feature root = factory.createFeature(modelName);
 		TraVarTUtils.addFeature(fm, root);
 		TraVarTUtils.setAbstract(root, true);
 		TraVarTUtils.setRoot(fm, root);
+		TraVarTUtils.setExtendedFeatureModel(fm, true);
 		ProductTransformerUtil.createProductFeatureModel(factory, fm, asq);
 		ResourceTransformerUtil.createResoruceFeatureModel(factory, fm, asq);
 		ProcessTransformerUtil.createProcessFeatureModel(factory, fm, asq);
@@ -37,7 +38,8 @@ public class PprDslToFeatureModelTransformer {
 		return fm;
 	}
 
-	private static void createGlobalConstraints(final FeatureModel fm, final AssemblySequence asq) {
+	private static void createGlobalConstraints(final FeatureModel fm, final AssemblySequence asq)
+			throws ReflectiveOperationException {
 		for (final Constraint constr : asq.getGlobalConstraints()) {
 			try {
 				final ConstraintDefinitionParser parser = new ConstraintDefinitionParser(fm, asq);
@@ -62,7 +64,7 @@ public class PprDslToFeatureModelTransformer {
 	}
 
 	private static boolean isMandatoryRootConstraint(final FeatureModel fm,
-			final de.vill.model.constraint.Constraint constraint) {
+			final de.vill.model.constraint.Constraint constraint) throws ReflectiveOperationException {
 		de.vill.model.constraint.Constraint left = TraVarTUtils.getLeftConstraint(constraint);
 		if (!(left instanceof LiteralConstraint)) {
 			return false;
