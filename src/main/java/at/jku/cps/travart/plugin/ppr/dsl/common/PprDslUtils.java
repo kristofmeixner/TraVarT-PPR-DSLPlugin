@@ -116,9 +116,16 @@ public final class PprDslUtils {
 								.getValue().getValue().toString());
 	}
 
-	public static boolean hasDeltaFileAttribute(final Resource resource) {
-		return Objects.requireNonNull(resource).getAttributes()
-				.containsKey(DefaultPprDslTransformationProperties.DELTA_FILE);
+	public static boolean hasAttributeSpecified(final Product product, final String attributeKey) {
+		return Objects.requireNonNull(product).getAttributes().containsKey(attributeKey);
+	}
+
+	public static boolean hasAttributeSpecified(final Process process, final String attributeKey) {
+		return Objects.requireNonNull(process).getAttributes().containsKey(attributeKey);
+	}
+
+	public static boolean hasAttributeSpecified(final Resource resource, final String attributeKey) {
+		return Objects.requireNonNull(resource).getAttributes().containsKey(attributeKey);
 	}
 
 	public static Object getAttributeValue(final Product product, final String key) {

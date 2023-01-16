@@ -1,5 +1,7 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation.product;
 
+import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.DELTA_FILE;
+
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -46,6 +48,9 @@ public class ProductTransformerUtil {
 				final Feature feature = factory.createFeature(product.getId());
 				if (product.isAbstract()) {
 					TraVarTUtils.setAbstract(feature, true);
+				}
+				if (PprDslUtils.hasAttributeSpecified(product, DELTA_FILE)) {
+					TraVarTUtils.addAttribute(feature, DELTA_FILE, PprDslUtils.getAttributeValue(product, DELTA_FILE));
 				}
 				TraVarTUtils.addFeature(fm, feature);
 				TraVarTUtils.setGroup(fm, feature, subroot, Group.GroupType.OPTIONAL);

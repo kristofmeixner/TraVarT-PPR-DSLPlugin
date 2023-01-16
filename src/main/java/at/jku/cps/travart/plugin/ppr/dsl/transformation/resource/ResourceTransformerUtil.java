@@ -47,9 +47,8 @@ public class ResourceTransformerUtil {
 			if (resource.isAbstract()) {
 				TraVarTUtils.setAbstract(feature, true);
 			}
-			if (PprDslUtils.hasDeltaFileAttribute(resource)) {
+			if (PprDslUtils.hasAttributeSpecified(resource, DELTA_FILE)) {
 				TraVarTUtils.addAttribute(feature, DELTA_FILE, PprDslUtils.getAttributeValue(resource, DELTA_FILE));
-
 			}
 			TraVarTUtils.addFeature(fm, feature);
 			TraVarTUtils.setGroup(fm, feature, subroot,

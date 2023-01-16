@@ -1,5 +1,7 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation.process;
 
+import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.DELTA_FILE;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -51,6 +53,9 @@ public class ProcessTransformerUtil {
 			final Feature feature = factory.createFeature(process.getId());
 			if (process.isAbstract()) {
 				TraVarTUtils.setAbstract(feature, true);
+			}
+			if (PprDslUtils.hasAttributeSpecified(process, DELTA_FILE)) {
+				TraVarTUtils.addAttribute(feature, DELTA_FILE, PprDslUtils.getAttributeValue(process, DELTA_FILE));
 			}
 			deriveVisibilityConditions(feature, process, asq);
 			TraVarTUtils.addFeature(fm, feature);
