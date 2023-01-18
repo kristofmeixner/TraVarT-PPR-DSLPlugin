@@ -16,6 +16,7 @@ import at.sqi.ppr.model.product.Product;
 import de.vill.model.Feature;
 import de.vill.model.FeatureModel;
 import de.vill.model.Group;
+import de.vill.model.Group.GroupType;
 
 public class ProductTransformerUtil {
 
@@ -34,6 +35,7 @@ public class ProductTransformerUtil {
 		Objects.requireNonNull(asq);
 		transformProducts(fm, asq);
 		deriveFeatureTree(fm, asq);
+		deriveMandatoryFeatures(fm, asq);
 		transformConstraints(fm, asq);
 		DefaultCoreModelOptimizer.getInstance().optimize(fm);
 	}
@@ -67,19 +69,34 @@ public class ProductTransformerUtil {
 					deriveFromChildrenAttribute(fm, product);
 				}
 				deriveConstraintsFromImplementedProducts(fm, product);
+			}
+		}
+	}
 
-			} else if (product.isAbstract()) {
+	private static void deriveMandatoryFeatures(final FeatureModel fm, final AssemblySequence asq) {
+		for (final Product product : asq.getProducts().values()) {
+			if (!PprDslUtils.isPartialProduct(product) && product.isAbstract()) {
 				// for non-partial, abstract products, the required partial products are
 				// mandatory
 				for (final Product required : product.getRequires()) {
 					if (PprDslUtils.isPartialProduct(required)) {
-						final Feature requiredFeature = TraVarTUtils.getFeature(fm, required.getId());
-						TraVarTUtils.setGroup(fm, requiredFeature, requiredFeature.getParentFeature(),
-								Group.GroupType.MANDATORY);
+						String productId = required.getId();
+						final Feature requiredFeature = TraVarTUtils.getFeature(fm, productId);
+						makeFeaturePathMandatory(fm, requiredFeature);
 					}
 				}
 			}
 		}
+	}
+
+	private static void makeFeaturePathMandatory(final FeatureModel fm, final Feature feature) {
+		if (TraVarTUtils.isRoot(feature) || !TraVarTUtils.hasParentFeature(feature)) {
+			return;
+		}
+		if (!TraVarTUtils.isInGroup(feature, GroupType.MANDATORY)) {
+			TraVarTUtils.setGroup(fm, feature, feature.getParentFeature(), Group.GroupType.MANDATORY);
+		}
+		makeFeaturePathMandatory(fm, feature.getParentFeature());
 	}
 
 	private static void deriveFromImplementsAttribute(final FeatureModel fm, final Product childProduct) {
