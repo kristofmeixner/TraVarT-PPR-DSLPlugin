@@ -98,7 +98,7 @@ public class ConstraintDefinitionParser {
 				// at this point this may means that the product is non-abstract and could
 				// indicate mandatory features. Replace by root feature if the product is not
 				// abstract, otherwise by a null object
-				if (!asq.getProducts().get(symbol).isAbstract()) {
+				if (asq.getProducts().get(symbol) == null || asq.getProducts().get(symbol).isAbstract()) {
 					throw new ParserException(new NullPointerException(
 							String.format("feature with identifier %s is not found (null)", symbol)));
 				}
