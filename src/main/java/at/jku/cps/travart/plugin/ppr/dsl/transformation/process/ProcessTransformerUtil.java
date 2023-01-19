@@ -148,6 +148,5 @@ public class ProcessTransformerUtil {
 								factory.createLiteralConstraint(TraVarTUtils.getFeatureName(excludedFeature)))));
 			}
 		}
-
 	}
 }
