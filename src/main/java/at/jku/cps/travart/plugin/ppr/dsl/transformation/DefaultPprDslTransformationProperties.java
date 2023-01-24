@@ -42,7 +42,7 @@ public final class DefaultPprDslTransformationProperties {
 
 	public static final String DELTA_FILE = "deltaFile";
 	public static final String DELTA_FILE_TYPE = "Collection";
-	public static final String DELTA_FILE_DESCRIPTION = "Specifies delta file how the resource is build";
+	public static final String DELTA_FILE_DESCRIPTION = "Specifies delta file(s) how the resource is build";
 	public static final String DELTA_FILE_DEFAULT_VALUE = "";
 
 	private DefaultPprDslTransformationProperties() {

@@ -1,10 +1,11 @@
 package at.jku.cps.travart.plugin.ppr.dsl.transformation.resource;
 
+import static at.jku.cps.travart.core.transformation.DefaultModelTransformationProperties.INSTANCE_CARDINALTIY;
+import static at.jku.cps.travart.core.transformation.DefaultModelTransformationProperties.INSTANCE_CARDINALTIY_DELIMITER;
 import static at.jku.cps.travart.plugin.ppr.dsl.transformation.DefaultPprDslTransformationProperties.DELTA_FILE;
 
 import java.util.Objects;
 
-import at.jku.cps.travart.core.exception.NotSupportedVariabilityTypeException;
 import at.jku.cps.travart.core.factory.impl.CoreModelFactory;
 import at.jku.cps.travart.core.helpers.TraVarTUtils;
 import at.jku.cps.travart.core.optimize.DefaultCoreModelOptimizer;
@@ -19,6 +20,9 @@ public class ResourceTransformerUtil {
 
 	private static final String RESOURCE_ROOT = "resource";
 
+	private static final String FEATURE_CARDINALTITY = "1".concat(INSTANCE_CARDINALTIY_DELIMITER)
+			.concat(String.valueOf(Integer.MAX_VALUE));
+
 	private ResourceTransformerUtil() {
 
 	}
@@ -26,7 +30,7 @@ public class ResourceTransformerUtil {
 	private static CoreModelFactory factory;
 
 	public static FeatureModel createResoruceFeatureModel(final CoreModelFactory coreFactory, final FeatureModel fm,
-			final AssemblySequence asq) throws NotSupportedVariabilityTypeException {
+			final AssemblySequence asq) {
 		factory = Objects.requireNonNull(coreFactory);
 		Objects.requireNonNull(fm);
 		Objects.requireNonNull(asq);
@@ -46,6 +50,8 @@ public class ResourceTransformerUtil {
 			final Feature feature = factory.createFeature(resource.getId());
 			if (resource.isAbstract()) {
 				TraVarTUtils.setAbstract(feature, true);
+			} else {
+				TraVarTUtils.addAttribute(feature, INSTANCE_CARDINALTIY, FEATURE_CARDINALTITY);
 			}
 			if (PprDslUtils.hasAttributeSpecified(resource, DELTA_FILE)) {
 				TraVarTUtils.addAttribute(feature, DELTA_FILE, PprDslUtils.getAttributeValue(resource, DELTA_FILE));
