@@ -8,6 +8,7 @@ import org.pf4j.Extension;
 import at.jku.cps.travart.core.common.IModelTransformer;
 import at.jku.cps.travart.core.common.IPlugin;
 import at.jku.cps.travart.core.common.IReader;
+import at.jku.cps.travart.core.common.IStatistics;
 import at.jku.cps.travart.core.common.IWriter;
 import at.jku.cps.travart.plugin.ppr.dsl.io.PprDslReader;
 import at.jku.cps.travart.plugin.ppr.dsl.io.PprDslWriter;
@@ -52,5 +53,11 @@ public class PPRDSLIPluginImpl implements IPlugin {
 	@Override
 	public List<String> getSupportedFileExtensions() {
 		return Collections.unmodifiableList(List.of(".dsl"));
+	}
+
+	@Override
+	public IStatistics getStatistics() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
